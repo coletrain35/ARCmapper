@@ -1,0 +1,7 @@
+# Ignore everything
+*
+
+# Keep the app and its readme
+!process-mapping-v8.html
+!README.md
+!.gitignore
