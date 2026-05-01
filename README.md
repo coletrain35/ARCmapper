@@ -3,6 +3,8 @@
 
 A single-file process mapping tool for documenting workflows, assigning ownership, and visualizing how work actually moves through a team — no setup, no server, no account required.
 
+![ARC Mapper Hero](deck/exports/slide-01-01-cover.png)
+
 ---
 
 ## What it does
@@ -56,6 +58,8 @@ Your documents auto-save to your browser's `localStorage`. Nothing leaves your m
 ## Key features
 
 ### Editor
+
+![Document View](deck/exports/slide-03-03-document.png)
 - Rich description field with a formatting toolbar (bold, italic, lists, blockquotes, inline code)
 - Markdown-style shortcuts (`**bold**`, `- bullet`, etc.) and keyboard shortcuts (`Ctrl+B`, `Ctrl+I`)
 - Per-step risk tracking with severity levels (High / Medium / Low) and mitigations
@@ -69,6 +73,8 @@ Your documents auto-save to your browser's `localStorage`. Nothing leaves your m
 - Nested decisions (decisions within branch paths) are fully supported
 
 ### Flowchart
+
+![Flowchart View](deck/exports/slide-04-04-flowchart.png)
 - **Top-to-Bottom** layout with orthogonal connectors and branch labels
 - **Swimlane** layout organized by step owner, with horizontal scroll
 - Hover any node to trace its connections — incoming and outgoing edges highlight, everything else dims
@@ -77,10 +83,14 @@ Your documents auto-save to your browser's `localStorage`. Nothing leaves your m
 - Heat map overlay to surface high-risk steps at a glance
 
 ### Ownership views
+
+![Ownership View](deck/exports/slide-05-05-ownership.png)
 - **Perspective Lens** — filter the entire process from one owner's point of view, with context cards showing handoffs in and out
 - **Threaded Journey** — all owners shown simultaneously as parallel vertical threads
 
 ### RACI
+
+![RACI Matrix](deck/exports/slide-06-06-raci.png)
 - Assign R / A / C / I roles to any owner at any step via dropdown
 - Inline editing directly on the timeline cards
 
@@ -119,6 +129,11 @@ All data is stored in your browser's `localStorage` under the key prefix `pm-doc
 
 ```
 process-mapping-v8.html       # The app — open this
+process-mapping-v7.html       # Stable reference version
+AGENTS.md                     # Developer/agent context guide
+IMPLEMENTATION_PLAN.md        # Changelog and design decisions
+deck/                         # High-fidelity showcase slides & images
+design-explorations/          # UI prototypes and mockups
 ```
 
 ---

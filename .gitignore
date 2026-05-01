@@ -5,3 +5,9 @@
 !process-mapping-v8.html
 !README.md
 !.gitignore
+
+# Keep only the exported images
+!deck/
+deck/*
+!deck/exports/
+!deck/exports/**
