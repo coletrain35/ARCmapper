@@ -119,10 +119,6 @@ All data is stored in your browser's `localStorage` under the key prefix `pm-doc
 
 ```
 process-mapping-v8.html       # The app — open this
-process-mapping-v7.html       # Stable reference version
-AGENTS.md                     # Developer/agent context guide
-IMPLEMENTATION_PLAN.md        # Changelog and design decisions
-design-explorations/          # UI prototypes and mockups
 ```
 
 ---
