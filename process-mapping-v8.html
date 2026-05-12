@@ -999,6 +999,10 @@ body.panel-open .side-panel { right: 0; }
 <!-- ═══ OWNERSHIP TAB ═══ -->
 <div id="tab-owner" style="display:none;">
   <div id="owner-doc-header" style="padding:16px 20px 0;margin-bottom:0;"></div>
+  <div class="flow-toolbar">
+    <button class="tbtn tbtn-pdf" onclick="exportOwnershipPDF()">Export PDF</button>
+    <button class="tbtn tbtn-html" onclick="exportOwnershipInteractive()">Interactive HTML</button>
+  </div>
   <div class="owner-wrap">
     <div class="role-selector">
       <div class="role-tab active" id="owner-lens-tab" onclick="switchOwnerView('lens', this)">Perspective Lens</div>
@@ -1011,6 +1015,10 @@ body.panel-open .side-panel { right: 0; }
 <!-- ═══ RACI TAB ═══ -->
 <div id="tab-raci" style="display:none;">
   <div id="raci-doc-header" style="padding:16px 20px 0;margin-bottom:0;"></div>
+  <div class="flow-toolbar">
+    <button class="tbtn tbtn-pdf" onclick="exportRaciPDF()">Export PDF</button>
+    <button class="tbtn tbtn-svg" onclick="exportRaciCSV()">Export CSV</button>
+  </div>
   <div style="margin-bottom:12px;padding-top:12px;font-size:13px;color:var(--ink3);text-align:center;">The Contextual Timeline: Chronological RACI mapping to minimize cognitive load.</div>
   <div class="raci-timeline-wrap" id="raci-timeline-content"></div>
 </div>
@@ -1403,6 +1411,11 @@ function upStep(id,f,v){
     refreshBranchDropdowns();
   } else {
     updMetrics();
+    // Refresh ownership and RACI views when owner/dur/desc/tags change
+    if(f==='owner'||f==='dur'){
+      if(document.getElementById('tab-owner').style.display!=='none') renderOwnerView();
+    }
+    if(document.getElementById('tab-raci').style.display!=='none') renderRaciTimeline();
   }
   markDirty();
 }
@@ -1430,9 +1443,9 @@ function addStepToBranch(stepId,bi,inputId){
   const input=document.getElementById(inputId);if(!input)return;
   const name=input.value.trim();if(!name)return;
   
-  // Create new step
+  // Create new step, inheriting the parent decision's owner
   const newId=++sId;
-  const newStep={id:newId,type:'task',name:name,desc:'',owner:'',dur:'',branches:[],nextId:'',subprocId:'',stepRisks:[],tags:[]};
+  const newStep={id:newId,type:'task',name:name,desc:'',owner:s.owner||'',dur:'',branches:[],nextId:'',subprocId:'',stepRisks:[],tags:[]};
   steps.push(newStep);
   
   const branch=s.branches[bi];
@@ -2289,7 +2302,8 @@ function layoutGraph(){
   const adj=buildGraph();
   const NW=280,NH=80,DW=100,DH=100;
   const COL_W=360;
-  const ROW_H=160;
+  const maxBranches=steps.reduce((mx,s)=>s.type==='decision'&&s.branches?Math.max(mx,s.branches.filter(b=>b.targetId).length):mx,0);
+  const ROW_H=maxBranches>0?160+(maxBranches-1)*30:160;
   const PAD_X=80,PAD_Y=80;
 
   const grid={};
@@ -3394,6 +3408,7 @@ function renderInteractiveCanvas(){
   let svg = `<svg class="canvas-svg" viewBox="0 0 ${VW} ${VH}">`;
   svg += `<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>`;
   
+  const branchLabels=[];
   steps.forEach(s=>{
     const p=pos[String(s.id)];if(!p)return;
     const targets=adj[String(s.id)]||[];
@@ -3401,9 +3416,14 @@ function renderInteractiveCanvas(){
       const tp=pos[tid];if(!tp)return;
       
       let color='var(--border-strong)';
+      let lbl='';
       if(s.type==='decision'&&s.branches){
         const b=s.branches.find(x=>String(x.targetId)===tid);
-        if(b) color=BRANCH_COLORS[s.branches.indexOf(b)]||BRANCH_COLORS[BRANCH_COLORS.length-1];
+        if(b){
+          const bi=s.branches.indexOf(b);
+          color=BRANCH_COLORS[bi]||BRANCH_COLORS[BRANCH_COLORS.length-1];
+          lbl=b.label;
+        }
       }
       
       const x1=p.x+p.w/2, y1=p.y+p.h;
@@ -3416,8 +3436,21 @@ function renderInteractiveCanvas(){
       const cp2y = y2 - distY * offset;
       
       svg += `<path class="edge edge-${s.id}-${tid} anim-draw" data-from="${s.id}" data-to="${tid}" d="M${x1},${y1} C${x1},${cp1y} ${x2},${cp2y} ${x2},${y2}" stroke="${color}" marker-end="url(#arr)"/>`;
+      
+      if(lbl){
+        branchLabels.push({x:(x1+x2)/2, y:(y1+y2)/2 - 14, text:lbl, color:color});
+      }
     });
   });
+  
+  // Branch labels with background pill
+  branchLabels.forEach(lbl=>{
+    const textLen=lbl.text.length;
+    const textWidth=textLen*7+16;
+    svg+=`<rect x="${lbl.x-textWidth/2}" y="${lbl.y-11}" width="${textWidth}" height="18" fill="#fffaf5" stroke="${lbl.color}" stroke-width="0.5" opacity="0.95" rx="9"/>`;
+    svg+=`<text x="${lbl.x}" y="${lbl.y}" text-anchor="middle" font-size="10" fill="${lbl.color}" font-weight="600">${esc(lbl.text)}</text>`;
+  });
+  
   svg += `</svg>`;
   html += svg;
   
@@ -3638,51 +3671,65 @@ function renderOwnerView() {
 
 function renderPerspectiveLens(container) {
   const allOwners = getAllOwners();
-  if(!allOwners.length) {
+  const hasUnassigned = steps.some(s => !s.owner);
+  if(!allOwners.length && !hasUnassigned) {
     container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink3);">No owners defined in this process.</div>';
     return;
   }
   
-  let activeOwner = container.dataset.activeOwner || allOwners[0];
-  if(!allOwners.includes(activeOwner)) activeOwner = allOwners[0];
+  let activeOwner = container.dataset.activeOwner || (allOwners[0] || '__unassigned__');
+  const allOptions = allOwners.length ? [...allOwners] : [];
+  if(hasUnassigned && !allOptions.includes('__unassigned__')) allOptions.push('__unassigned__');
+  if(!allOptions.includes(activeOwner)) activeOwner = allOptions[0];
   
   let html = `<div style="padding:20px;border-bottom:1px solid var(--border);display:flex;gap:8px;overflow-x:auto;">`;
-  allOwners.forEach(o => {
+  allOptions.forEach(o => {
+    const label = o === '__unassigned__' ? 'Unassigned' : o;
     const isAct = o === activeOwner ? 'background:var(--acc);color:white;border-color:var(--acc);' : 'background:var(--surface);';
-    html += `<button onclick="document.getElementById('owner-content').dataset.activeOwner='${esc(o)}';renderOwnerView()" style="padding:8px 16px;border-radius:20px;border:1px solid var(--border);font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;${isAct}">${esc(o)}</button>`;
+    html += `<button onclick="document.getElementById('owner-content').dataset.activeOwner='${esc(o)}';renderOwnerView()" style="padding:8px 16px;border-radius:20px;border:1px solid var(--border);font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;${isAct}">${esc(label)}</button>`;
   });
   html += `</div>`;
   
   html += `<div class="lens-content">`;
   
+  const shown = [];
   steps.forEach((s, idx) => {
-    if(s.owner === activeOwner) {
-      const prev = idx > 0 ? steps[idx-1] : null;
-      if(prev && prev.owner !== activeOwner) {
-        html += `<div class="p-context" onclick="openDetailPanel(${prev.id})" title="${prev.owner||'Unassigned'}">
-                  <span class="c-dot" style="background:var(--ink-muted)"></span>
-                  Input from ${esc(prev.name || TL[prev.type])}
-                 </div>
-                 <div class="p-connector"></div>`;
-      }
-      
-      html += `<div class="p-node" onclick="openDetailPanel(${s.id})">
-                 <div style="font-size:12px;color:var(--ink-muted);font-weight:700;margin-bottom:8px;text-transform:uppercase;">${TL[s.type]}</div>
-                 <div style="font-size:18px;font-weight:800;color:var(--ink);margin-bottom:8px;">${esc(s.name || 'Untitled')}</div>
-                 ${s.desc ? `<div style="font-size:14px;color:var(--ink-muted);">${esc(s.desc)}</div>` : ''}
-               </div>`;
-               
-      const next = nextStepInPath(s, steps);
-      if(next && next.owner !== activeOwner) {
-        html += `<div class="p-connector"></div>
-                 <div class="p-context" onclick="openDetailPanel(${next.id})" title="${next.owner||'Unassigned'}">
-                  <span class="c-dot" style="background:var(--warn)"></span>
-                  Passes to ${esc(next.name || TL[next.type])}
-                 </div>`;
-      }
-      
-      html += `<div style="height:20px;"></div>`;
+    const matches = activeOwner === '__unassigned__' ? !s.owner : s.owner === activeOwner;
+    if(!matches) return;
+    shown.push({s, idx});
+  });
+  
+  if(!shown.length) {
+    html += `<div style="color:var(--ink-muted);font-size:14px;padding:40px;">No steps assigned to this owner.</div>`;
+  }
+  
+  shown.forEach(({s, idx}) => {
+    const prev = idx > 0 ? steps[idx-1] : null;
+    if(prev && ((activeOwner === '__unassigned__' ? !prev.owner : prev.owner !== activeOwner) || prev.owner !== s.owner)) {
+      html += `<div class="p-context" onclick="openDetailPanel(${prev.id})" title="${prev.owner||'Unassigned'}">
+                <span class="c-dot" style="background:var(--ink-muted)"></span>
+                Input from ${esc(prev.name || TL[prev.type])}
+               </div>
+               <div class="p-connector"></div>`;
     }
+    
+    html += `<div class="p-node" onclick="openDetailPanel(${s.id})" style="${!s.owner ? 'border-left-color:var(--ink-muted);' : ''}">
+               <div style="font-size:12px;color:var(--ink-muted);font-weight:700;margin-bottom:8px;text-transform:uppercase;">${TL[s.type]}</div>
+               <div style="font-size:18px;font-weight:800;color:var(--ink);margin-bottom:8px;">${esc(s.name || 'Untitled')}</div>
+               ${!s.owner ? '<div style="font-size:12px;color:var(--warn);font-weight:600;margin-top:4px;">No owner assigned</div>' : ''}
+               ${s.desc ? `<div style="font-size:14px;color:var(--ink-muted);">${esc(s.desc)}</div>` : ''}
+             </div>`;
+             
+    const next = nextStepInPath(s, steps);
+    if(next && ((activeOwner === '__unassigned__' ? !next.owner : next.owner !== activeOwner) || next.owner !== s.owner)) {
+      html += `<div class="p-connector"></div>
+               <div class="p-context" onclick="openDetailPanel(${next.id})" title="${next.owner||'Unassigned'}">
+                 <span class="c-dot" style="background:var(--warn)"></span>
+                 Passes to ${esc(next.name || TL[next.type])}
+               </div>`;
+    }
+    
+    html += `<div style="height:20px;"></div>`;
   });
   
   html += `</div>`;
@@ -3691,39 +3738,46 @@ function renderPerspectiveLens(container) {
 
 function renderThreadedJourney(container) {
   const allOwners = getAllOwners();
-  if(!allOwners.length) {
+  const hasUnassigned = steps.some(s => !s.owner);
+  if(!allOwners.length && !hasUnassigned) {
     container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink3);">No owners defined in this process.</div>';
     return;
   }
   
   const COLORS = ['#38a169','#3182ce','#d69e2e','#805ad5','#e24b4a','#c8553d','#319795','#b7791f','#6b46c1','#2b6cb0'];
+  const UNASSIGNED_COLOR = '#8a8880';
   const THREAD_W  = 36;
   const SIDEBAR_PAD = 20;
   const LABEL_H   = 120;
-  const SIDEBAR_W = SIDEBAR_PAD + allOwners.length * THREAD_W + 8;
+  const threadOwners = hasUnassigned ? [...allOwners, '__unassigned__'] : [...allOwners];
+  const SIDEBAR_W = SIDEBAR_PAD + threadOwners.length * THREAD_W + 8;
 
-  const stepsWithOwner = steps.filter(s => s.owner && allOwners.indexOf(s.owner) !== -1);
+  const stepsWithOwner = steps.filter(s => s.owner || hasUnassigned);
 
   let html = `<div style="overflow-x:auto;padding:0 20px 40px;">`;
   html += `<div style="position:relative;padding-left:${SIDEBAR_W}px;padding-top:${LABEL_H + 16}px;min-width:600px;">`;
 
   // Owner labels (rotated vertically at top of each thread)
-  allOwners.forEach((o, i) => {
+  threadOwners.forEach((o, i) => {
+    const label = o === '__unassigned__' ? 'Unassigned' : o;
+    const col = o === '__unassigned__' ? UNASSIGNED_COLOR : COLORS[i % COLORS.length];
     const cx = SIDEBAR_PAD + i * THREAD_W + THREAD_W / 2;
-    html += `<div style="position:absolute;top:0;left:${cx}px;height:${LABEL_H}px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;font-weight:700;color:${COLORS[i % COLORS.length]};white-space:nowrap;">${esc(o)}</div>`;
+    html += `<div style="position:absolute;top:0;left:${cx}px;height:${LABEL_H}px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;font-weight:700;color:${col};white-space:nowrap;">${esc(label)}</div>`;
   });
 
   // Vertical thread lines (continuous, run behind steps)
-  allOwners.forEach((o, i) => {
+  threadOwners.forEach((o, i) => {
+    const col = o === '__unassigned__' ? UNASSIGNED_COLOR : COLORS[i % COLORS.length];
     const cx = SIDEBAR_PAD + i * THREAD_W + THREAD_W / 2;
-    html += `<div style="position:absolute;top:${LABEL_H}px;left:${cx - 1}px;width:2px;bottom:0;background:${COLORS[i % COLORS.length]};opacity:0.3;"></div>`;
+    html += `<div style="position:absolute;top:${LABEL_H}px;left:${cx - 1}px;width:2px;bottom:0;background:${col};opacity:${o === '__unassigned__' ? '0.15' : '0.3'};"></div>`;
   });
 
   // Step rows
   stepsWithOwner.forEach((s) => {
-    const ownerIdx = allOwners.indexOf(s.owner);
-    const color = COLORS[ownerIdx % COLORS.length];
-    const initials = s.owner.split(/\s+/).map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    const effectiveOwner = s.owner || '__unassigned__';
+    const ownerIdx = threadOwners.indexOf(effectiveOwner);
+    const color = effectiveOwner === '__unassigned__' ? UNASSIGNED_COLOR : COLORS[ownerIdx % COLORS.length];
+    const initials = effectiveOwner === '__unassigned__' ? '?' : s.owner.split(/\s+/).map(w => w[0]).join('').substring(0, 2).toUpperCase();
     const cx = SIDEBAR_PAD + ownerIdx * THREAD_W + THREAD_W / 2;
     const connectorW = SIDEBAR_W - cx;
     const stepIdx = steps.indexOf(s);
@@ -3731,19 +3785,19 @@ function renderThreadedJourney(container) {
     html += `<div style="position:relative;display:flex;align-items:center;gap:14px;margin-bottom:28px;cursor:pointer;" onclick="openDetailPanel(${s.id})">`;
 
     // Horizontal connector line from thread to avatar
-    html += `<div style="position:absolute;left:${cx - SIDEBAR_W}px;width:${connectorW + 22}px;height:2px;background:${color};"></div>`;
+    html += `<div style="position:absolute;left:${cx - SIDEBAR_W}px;width:${connectorW + 22}px;height:2px;background:${color};${effectiveOwner === '__unassigned__' ? 'opacity:0.5;border-top:1px dashed '+UNASSIGNED_COLOR+';background:transparent;' : ''}"></div>`;
 
     // Dot on the thread at connection point
-    html += `<div style="position:absolute;left:${cx - SIDEBAR_W - 4}px;width:10px;height:10px;border-radius:50%;background:${color};z-index:2;"></div>`;
+    html += `<div style="position:absolute;left:${cx - SIDEBAR_W - 4}px;width:10px;height:10px;border-radius:50%;background:${color};z-index:2;${effectiveOwner === '__unassigned__' ? 'border:1px solid '+UNASSIGNED_COLOR+';background:transparent;' : ''}"></div>`;
 
     // Initials avatar
-    html += `<div style="width:44px;height:44px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;z-index:1;">${initials}</div>`;
+    html += `<div style="width:44px;height:44px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;z-index:1;${effectiveOwner === '__unassigned__' ? 'background:transparent;border:2px dashed '+UNASSIGNED_COLOR+';color:'+UNASSIGNED_COLOR+';' : ''}">${initials}</div>`;
 
     // Step card
-    html += `<div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.05);transition:box-shadow .2s,border-color .2s;"
+    html += `<div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.05);transition:box-shadow .2s,border-color .2s;${effectiveOwner === '__unassigned__' ? 'border-left:3px dashed '+UNASSIGNED_COLOR+';' : ''}"
       onmouseenter="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)';this.style.borderColor='${color}'"
       onmouseleave="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.05)';this.style.borderColor='var(--border)'">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${color};margin-bottom:4px;">${TL[s.type]} &middot; Step ${stepIdx + 1}</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${color};margin-bottom:4px;">${TL[s.type]} &middot; Step ${stepIdx + 1}${effectiveOwner === '__unassigned__' ? ' &middot; <span style="color:'+UNASSIGNED_COLOR+';">No owner</span>' : ''}</div>
       <div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:${s.desc?'4px':'0'};">${esc(s.name || TL[s.type])}</div>
       ${s.desc ? `<div style="font-size:13px;color:var(--ink-muted);line-height:1.5;">${esc(s.desc.substring(0,100))}${s.desc.length>100?'&hellip;':''}</div>` : ''}
     </div>`;
@@ -3757,6 +3811,152 @@ function renderThreadedJourney(container) {
 
   html += `</div></div>`;
   container.innerHTML = html;
+}
+
+/* ── OWNERSHIP EXPORTS ── */
+function exportOwnershipPDF(){
+  const name=document.getElementById('proc-name').value||'Process';
+  const owrap=document.querySelector('.owner-wrap');
+  if(!owrap||!steps.length){alert('Add steps with owners first.');return;}
+  
+  const styles=document.querySelector('style').innerHTML;
+  const ownerHtml=owrap.outerHTML;
+  const viewLabel=currentOwnerView==='lens'?'Perspective Lens':'Threaded Journey';
+  
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(name)} — Ownership (${viewLabel})</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+${styles}
+  body{margin:32px;background:var(--bg);font-family:var(--sans);}
+  .top-nav,.save-bar,.flow-toolbar{display:none!important;}
+  @media print{@page{size:A4;margin:1.5cm;}}
+</style></head><body>
+<h1 style="font-size:24px;font-weight:800;color:var(--ink);margin-bottom:4px;">${esc(name)} — Ownership View</h1>
+<p style="font-size:13px;color:var(--ink-muted);margin-bottom:24px;">${viewLabel} · ${new Date().toLocaleDateString()}</p>
+${ownerHtml}
+</body></html>`;
+  const win=window.open('','_blank');win.document.write(html);win.document.close();win.addEventListener('load',()=>{win.focus();win.print();});
+}
+
+function exportOwnershipInteractive(){
+  const name=document.getElementById('proc-name').value||'Process Ownership';
+  const styles=document.querySelector('style').innerHTML;
+  const panel=document.getElementById('detail-panel');
+  if(!panel){alert('Side panel not found.');return;}
+  const sidePanelHtml=panel.outerHTML.replace('<div class="sp-header">','<button class="sp-custom-close" onclick="closeDetailPanel()">×</button><div class="sp-header">');
+  const owrap=document.querySelector('.owner-wrap');
+  if(!owrap||!steps.length){alert('Add steps with owners first.');return;}
+  
+  const d=gather();
+  const viewLabel=currentOwnerView==='lens'?'Perspective Lens':'Threaded Journey';
+  const ownerHtml=owrap.outerHTML;
+  
+  const html=`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(name)} — Ownership (${viewLabel})</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+${styles}
+body{overflow:hidden;padding:0;margin:0;background:var(--bg);}
+.top-nav,.view-content>div:not(#tab-owner){display:none!important;}
+#tab-owner{display:block!important;padding:24px;max-width:900px;margin:0 auto;height:100vh;overflow-y:auto;}
+.flow-toolbar,.role-selector{display:none!important;}
+.sp-edit-btn,.sp-close{display:none!important;}
+.sp-custom-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:bold;color:var(--ink2);z-index:10;}
+.sp-custom-close:hover{background:var(--bg);color:var(--ink);}
+</style>
+</head>
+<body>
+<div id="tab-owner">
+  <div style="margin-bottom:24px;">
+    <h1 style="font-size:24px;font-weight:800;color:var(--ink);margin-bottom:4px;">${esc(name)}</h1>
+    <p style="font-size:13px;color:var(--ink-muted);">Ownership View · ${viewLabel}</p>
+  </div>
+  ${ownerHtml}
+</div>
+${sidePanelHtml}
+
+<script>
+  const steps = ${JSON.stringify(d.steps)};
+  const risks = ${JSON.stringify(d.risks)};
+  const raciData = ${JSON.stringify(d.raciData)};
+  const TL = { task:'Task',decision:'Decision',handoff:'Handoff',subprocess:'Subprocess',start:'Start',end:'End' };
+  
+  function esc(str){
+    if(!str)return'';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  
+  function openDetailPanel(id){
+    const s = steps.find(x=>String(x.id)===String(id));
+    if(!s)return;
+    
+    document.getElementById('sp-type').textContent = TL[s.type];
+    document.getElementById('sp-title').textContent = s.name||TL[s.type];
+    
+    let metaHtml = '';
+    if(s.owner) metaHtml += '<span class="sp-tag">\u{1F464} '+esc(s.owner)+'</span>';
+    if(s.dur) metaHtml += '<span class="sp-tag">\u23F1 '+esc(s.dur)+'</span>';
+    (s.tags||[]).forEach(t=>metaHtml+='<span class="sp-tag">\u{1F3F7} '+esc(t)+'</span>');
+    document.getElementById('sp-meta').innerHTML = metaHtml;
+    
+    let descHtml = s.desc ? esc(s.desc).replace(/\\n/g,'<br>') : '<span style="color:var(--ink-muted);font-style:italic;">No instructions provided.</span>';
+    document.getElementById('sp-desc').innerHTML = descHtml;
+    
+    const raciZones = {'R':[],'A':[],'C':[],'I':[]};
+    const allOwners = [...new Set(steps.map(x=>x.owner).filter(Boolean))];
+    allOwners.forEach(o=>{
+      const val = raciData[String(s.id)+'__'+o];
+      if(val&&raciZones[val])raciZones[val].push(o);
+    });
+    
+    let raciHtml = '';
+    ['R','A','C','I'].forEach(r=>{
+      if(raciZones[r].length>0){
+        const labels = {'R':'Responsible','A':'Accountable','C':'Consulted','I':'Informed'};
+        raciHtml += '<div class="sp-raci-zone"><div style="font-size:10px;font-weight:800;color:var(--ink-muted);text-transform:uppercase;margin-bottom:8px;">'+labels[r]+'</div>'+raciZones[r].map(o=>'<div style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;"><span class="c-dot"></span>'+esc(o)+'</div>').join('')+'</div>';
+      }
+    });
+    
+    const raciSection = document.getElementById('sp-raci-section');
+    if(!raciHtml)raciSection.style.display='none';
+    else{raciSection.style.display='block';document.getElementById('sp-raci').innerHTML=raciHtml;}
+    
+    let risksHtml = '';
+    (s.stepRisks||[]).forEach(r=>{
+      if(r&&r.risk){
+        const col = r.sev==='H'?'#e24b4a':r.sev==='M'?'#ef9f27':'#38a169';
+        risksHtml += '<div style="margin-bottom:12px;padding:12px;background:var(--bg);border-left:4px solid '+col+';border-radius:0 8px 8px 0;"><div style="font-weight:600;font-size:13px;margin-bottom:4px;">'+esc(r.risk)+'</div>'+(r.mit?'<div style="font-size:12px;color:var(--ink-muted);">Mitigation: '+esc(r.mit)+'</div>':'')+'</div>';
+      }
+    });
+    
+    const riskSection = document.getElementById('sp-risks-section');
+    if(!risksHtml)riskSection.style.display='none';
+    else{riskSection.style.display='block';document.getElementById('sp-risks').innerHTML=risksHtml;}
+    
+    document.body.classList.add('panel-open');
+  }
+  
+  function closeDetailPanel(){
+    document.body.classList.remove('panel-open');
+  }
+  
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape')closeDetailPanel();
+  });
+  
+  document.querySelector('.sp-custom-close')?.addEventListener('click',closeDetailPanel);
+<\/script>
+</body>
+</html>`;
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/\s+/g,'-').toLowerCase()+'-ownership.html';
+  a.click();
 }
 
 /* ── CONTEXTUAL TIMELINE (RACI) ── */
