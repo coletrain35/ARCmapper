@@ -373,6 +373,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .tbtn-svg:hover{background:#b54532;transform:translateY(-1px);box-shadow:var(--shadow-sm);}
 .tbtn-reset{background:var(--surface);border-color:var(--border);color:var(--ink-muted);margin-left:auto;}
 .tbtn-reset:hover{border-color:var(--danger);color:var(--danger);background:var(--danger-light);}
+.tbtn-rise{background:var(--success);border-color:var(--success);color:#fff;}
+.tbtn-rise:hover{background:#2d6a4f;transform:translateY(-1px);box-shadow:var(--shadow-sm);}
 /* flow tab */
   .flow-toolbar{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;padding:16px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow-sm);}
   .flow-label{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-muted);}
@@ -588,7 +590,7 @@ body.panel-open .side-panel { right: 0; }
 .sp-tag { padding: 6px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 99px; font-size: 12px; font-weight: 600; color: var(--ink-muted); }
 
 /* ── ULTIMATE CANVAS ── */
-.canvas-wrapper { position: relative; width: 100%; min-height: 800px; height: 80vh; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; box-shadow: inset 0 0 100px rgba(0,0,0,0.02); }
+.canvas-wrapper { position: relative; width: 100%; min-height: 800px; height: 80vh; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; box-shadow: inset 0 0 100px rgba(0,0,0,0.02); display: flex; justify-content: center; align-items: flex-start; }
 .canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
 .canvas-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 .edge { fill: none; stroke: var(--border-strong); stroke-width: 3px; transition: stroke 0.3s, opacity 0.3s; stroke-linecap: round; stroke-linejoin: round; }
@@ -975,6 +977,7 @@ body.panel-open .side-panel { right: 0; }
     <div style="flex:1;"></div>
     <button class="tbtn tbtn-svg" onclick="exportFlowSVG()">Export Image</button>
     <button class="tbtn tbtn-html" onclick="exportInteractiveFlowchart()">Interactive HTML</button>
+    <button class="tbtn tbtn-rise" onclick="exportFlowRise()">Rise Embed</button>
     <button class="tbtn tbtn-pdf" onclick="exportFlowPDF()">Export PDF</button>
   </div>
   <div class="flow-legend">
@@ -1002,6 +1005,7 @@ body.panel-open .side-panel { right: 0; }
   <div class="flow-toolbar">
     <button class="tbtn tbtn-pdf" onclick="exportOwnershipPDF()">Export PDF</button>
     <button class="tbtn tbtn-html" onclick="exportOwnershipInteractive()">Interactive HTML</button>
+    <button class="tbtn tbtn-rise" onclick="exportOwnershipRise()">Rise Embed</button>
   </div>
   <div class="owner-wrap">
     <div class="role-selector">
@@ -1018,6 +1022,7 @@ body.panel-open .side-panel { right: 0; }
   <div class="flow-toolbar">
     <button class="tbtn tbtn-pdf" onclick="exportRaciPDF()">Export PDF</button>
     <button class="tbtn tbtn-svg" onclick="exportRaciCSV()">Export CSV</button>
+    <button class="tbtn tbtn-rise" onclick="exportRaciRise()">Rise Embed</button>
   </div>
   <div style="margin-bottom:12px;padding-top:12px;font-size:13px;color:var(--ink3);text-align:center;">The Contextual Timeline: Chronological RACI mapping to minimize cognitive load.</div>
   <div class="raci-timeline-wrap" id="raci-timeline-content"></div>
@@ -1029,7 +1034,7 @@ body.panel-open .side-panel { right: 0; }
 const IDX_KEY='pm-index';
 const docKey=id=>'pm-doc-'+id;
 const STORE_KEY='process-map-v4';
-let steps=[],risks=[],raciData={},sId=0,rId=0,saveTimer=null,dirty=false,flowMode='TB',heatOn=false,currentDocId=null,activeTagFilter=null;
+let steps=[],risks=[],raciData={},sId=0,rId=0,saveTimer=null,dirty=false,flowMode='TB',heatOn=false,currentDocId=null,activeTagFilter=null,activeBranchTabs={};
 
 /* ── CONCEPT A+ ENHANCEMENTS ── */
 let viewMode='detail',activeStepId=null;
@@ -1265,7 +1270,7 @@ function saveNow(){
   }catch(e){document.getElementById('save-label').textContent='Could not save (storage full?)';}
 }
 function blankState(){
-  steps=[];risks=[];raciData={};sId=0;rId=0;
+  steps=[];risks=[];raciData={};sId=0;rId=0;activeBranchTabs={};
   activeStepId=null;searchQuery='';
   ['proc-name','proc-owner','proc-dept','proc-notes','proc-purpose'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('proc-ver').value='1.0';
@@ -1289,7 +1294,7 @@ function loadData(d){
   (d.outScope||[]).forEach(v=>{if(v)addScopeItem('out',v);});
 
   // Load ALL data first before any renders
-  steps=[];sId=0;(d.steps||[]).forEach(s=>{
+  steps=[];sId=0;activeBranchTabs={};(d.steps||[]).forEach(s=>{
     sId=Math.max(sId,s.id);
     let branches=s.branches;
     if(!branches&&(s.branchYes||s.branchNo)){
@@ -1443,29 +1448,58 @@ function addStepToBranch(stepId,bi,inputId){
   const input=document.getElementById(inputId);if(!input)return;
   const name=input.value.trim();if(!name)return;
   
-  // Create new step, inheriting the parent decision's owner
+  // Create new step (no owner inherited — leave blank for user to fill)
   const newId=++sId;
-  const newStep={id:newId,type:'task',name:name,desc:'',owner:s.owner||'',dur:'',branches:[],nextId:'',subprocId:'',stepRisks:[],tags:[]};
+  const newStep={id:newId,type:'task',name:name,desc:'',owner:'',dur:'',branches:[],nextId:'',subprocId:'',stepRisks:[],tags:[]};
   steps.push(newStep);
   
   const branch=s.branches[bi];
   if(!branch.targetId){
-    // No target yet - set this as the first step
+    // No target yet — set this as the first step in the branch
     branch.targetId=String(newId);
   }else{
-    // Has target - find the last step in the chain and link to new step
-    const chain=collectBranchSteps(branch.targetId,new Set([String(stepId)]));
-    const lastStep=chain[chain.length-1];
-    if(lastStep)lastStep.nextId=String(newId);
+    // Has target — find the last step EXCLUSIVE to this branch and append there.
+    // Collect every step ID reachable from sibling branches so we never modify
+    // a step shared with another path (which would contaminate all paths).
+    const siblingIds=new Set([String(stepId)]);
+    s.branches.forEach((b,idx)=>{
+      if(idx!==bi&&b.targetId){
+        collectBranchSteps(String(b.targetId),new Set([String(stepId)])).forEach(t=>{
+          siblingIds.add(String(t.id));
+        });
+      }
+    });
+    // Traverse only the exclusive portion (stops before any shared step)
+    const exclusiveChain=collectBranchSteps(branch.targetId,siblingIds);
+    if(exclusiveChain.length>0){
+      const lastExclusive=exclusiveChain[exclusiveChain.length-1];
+      // Preserve any forward link to shared steps so the chain stays intact
+      newStep.nextId=lastExclusive.nextId||'';
+      lastExclusive.nextId=String(newId);
+    }else{
+      // Branch target itself is shared — prepend the new step pointing forward
+      newStep.nextId=String(branch.targetId);
+      branch.targetId=String(newId);
+    }
   }
   
   input.value='';
+  // Pin the active tab to the one we just added to, so renderSteps restores correctly
+  activeBranchTabs[stepId]=bi;
   renderSteps();markDirty();
   
-  // Focus the new step's name input if rendered
+  // Auto-expand the new step so the user can fill in details right away
   setTimeout(()=>{
-    const newInput=document.getElementById('sn-'+newId);
-    if(newInput)newInput.focus();
+    const previewId=`branch-preview-${stepId}-${bi}-${newId}`;
+    const fullId=`branch-full-${stepId}-${bi}-${newId}`;
+    const preview=document.getElementById(previewId);
+    const full=document.getElementById(fullId);
+    if(preview&&full){
+      toggleBranchStepExpand(previewId,fullId);
+      // Focus the Owner field so the user can start filling in details
+      const ownerInput=full.querySelector('input[placeholder="Name / role"]');
+      if(ownerInput)ownerInput.focus();
+    }
   },50);
 }
 
@@ -1815,6 +1849,9 @@ function createBranchContainer(s,realIdx){
   const contentContainer=document.createElement('div');
   contentContainer.className='branch-content';
   
+  const storedIdx=activeBranchTabs[s.id]||0;
+  const activeTabIdx=Math.min(storedIdx,s.branches.length-1);
+  
   const validBranches=s.branches.map((b,bi)=>{
     const branchSteps=b.targetId?collectBranchSteps(String(b.targetId),new Set([String(s.id)])):[];
     return{
@@ -1829,7 +1866,7 @@ function createBranchContainer(s,realIdx){
   
   validBranches.forEach((branch,bi)=>{
     const tab=document.createElement('button');
-    tab.className='branch-tab'+(bi===0?' active':'');
+    tab.className='branch-tab'+(bi===activeTabIdx?' active':'');
     tab.style.setProperty('--tab-color',branch.color);
     // Add step count badge if steps exist
     const stepBadge=branch.steps.length>0?`<span class="branch-tab-badge" style="background:${branch.color};color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;margin-left:8px;">${branch.steps.length}</span>`:'';
@@ -1839,13 +1876,14 @@ function createBranchContainer(s,realIdx){
       contentContainer.querySelectorAll('.branch-panel').forEach(p=>p.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById(decisionId+'-panel-'+bi).classList.add('active');
+      activeBranchTabs[s.id]=bi;
     };
     tabsContainer.appendChild(tab);
   });
   
   validBranches.forEach((branch,bi)=>{
     const panel=document.createElement('div');
-    panel.className='branch-panel'+(bi===0?' active':'');
+    panel.className='branch-panel'+(bi===activeTabIdx?' active':'');
     panel.id=decisionId+'-panel-'+bi;
     
     const indicator=document.createElement('div');
@@ -3532,16 +3570,21 @@ function renderInteractiveCanvas(){
       cw.scrollTop = scrollTop - walkY;
     });
     
-    // 2. Center to first node
+    // 2. Center canvas on load
     if(allPos.length) {
       let firstNodePos = allPos[0];
       for(const p of allPos) {
         if(p.y < firstNodePos.y) firstNodePos = p;
       }
       setTimeout(() => {
-        const cx = (firstNodePos.x + firstNodePos.w/2) * currentCanvasZoom;
-        const cy = (firstNodePos.y + firstNodePos.h/2) * currentCanvasZoom;
-        cw.scrollLeft = cx - cw.clientWidth / 2;
+        const scaledW = VW * currentCanvasZoom;
+        if(scaledW > cw.clientWidth) {
+          const minX = Math.min(...allPos.map(p => p.x));
+          const maxX = Math.max(...allPos.map(p => p.x + p.w));
+          const midX = (minX + maxX) / 2 * currentCanvasZoom;
+          cw.scrollLeft = midX - cw.clientWidth / 2;
+        }
+        const cy = (firstNodePos.y + firstNodePos.h / 2) * currentCanvasZoom;
         cw.scrollTop = Math.max(0, cy - 100);
       }, 50);
     }
@@ -3862,7 +3905,8 @@ function exportOwnershipInteractive(){
 ${styles}
 body{overflow:hidden;padding:0;margin:0;background:var(--bg);}
 .top-nav,.view-content>div:not(#tab-owner){display:none!important;}
-#tab-owner{display:block!important;padding:24px;max-width:900px;margin:0 auto;height:100vh;overflow-y:auto;}
+#tab-owner{display:block!important;padding:24px;max-width:none;margin:0;height:100vh;overflow-y:auto;}
+.threaded-wrap{max-width:none!important;}
 .flow-toolbar,.role-selector{display:none!important;}
 .sp-edit-btn,.sp-close{display:none!important;}
 .sp-custom-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:bold;color:var(--ink2);z-index:10;}
@@ -4089,6 +4133,142 @@ document.addEventListener('click', () => {
     openDropdownId = null;
   }
 });
+
+/* ══════════════════════════════════════════
+   RISE EMBED EXPORTS (iframe-safe, auto-height)
+   ══════════════════════════════════════════ */
+
+function exportFlowRise(){
+  const svg=buildFlowSVG(flowMode);if(!svg){alert('Add some steps first.');return;}
+  const name=document.getElementById('proc-name').value||'Process Flowchart';
+  const html=`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${esc(name)} — Flowchart</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#faf9f7;color:#1a1917;padding:20px;line-height:1.5;}
+h1{font-size:20px;color:#1a3a2a;margin-bottom:4px;}
+.sub{font-size:12px;color:#8a8880;margin-bottom:16px;}
+svg{display:block;max-width:100%;height:auto;border:1px solid #e0dfd8;border-radius:8px;background:#fff;}
+</style>
+</head>
+<body>
+<h1>${esc(name)}</h1>
+<p class="sub">Flowchart &middot; ${new Date().toLocaleDateString()}</p>
+<div id="chart">${svg}</div>
+<script>
+(function(){
+  function notify(){window.parent.postMessage({type:'rise-height',height:document.body.scrollHeight},'*');}
+  window.addEventListener('load',notify);
+  window.addEventListener('resize',notify);
+  new ResizeObserver(notify).observe(document.body);
+  setTimeout(notify,200);
+})();
+<\/script>
+</body>
+</html>`;
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/\s+/g,'-').toLowerCase()+'-rise-flowchart.html';a.click();
+}
+
+function exportOwnershipRise(){
+  const owrap=document.querySelector('.owner-wrap');
+  if(!owrap||!steps.length){alert('Add steps with owners first.');return;}
+  const name=document.getElementById('proc-name').value||'Process Ownership';
+  const viewLabel=currentOwnerView==='lens'?'Perspective Lens':'Threaded Journey';
+
+  const clone=owrap.cloneNode(true);
+  clone.querySelectorAll('button, .add-raci-btn, .raci-dropdown, .role-selector').forEach(el=>el.remove());
+  clone.querySelectorAll('[onclick]').forEach(el=>el.removeAttribute('onclick'));
+
+  const styles=document.querySelector('style').innerHTML;
+  const html=`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${esc(name)} — Ownership View</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+${styles}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#faf9f7;padding:20px;}
+h1{font-size:20px;color:#1a3a2a;margin-bottom:4px;}
+.sub{font-size:12px;color:#8a8880;margin-bottom:16px;}
+.owner-wrap{max-width:100%;box-shadow:none;}
+.top-nav,.save-bar,.flow-toolbar{display:none!important;}
+</style>
+</head>
+<body>
+<h1>${esc(name)}</h1>
+<p class="sub">Ownership View &middot; ${viewLabel} &middot; ${new Date().toLocaleDateString()}</p>
+${clone.outerHTML}
+<script>
+(function(){
+  function notify(){window.parent.postMessage({type:'rise-height',height:document.body.scrollHeight},'*');}
+  window.addEventListener('load',notify);
+  window.addEventListener('resize',notify);
+  new ResizeObserver(notify).observe(document.body);
+  setTimeout(notify,200);
+})();
+<\/script>
+</body>
+</html>`;
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/\s+/g,'-').toLowerCase()+'-rise-ownership.html';a.click();
+}
+
+function exportRaciRise(){
+  if(!steps.length){alert('Add some steps first.');return;}
+  const name=document.getElementById('proc-name').value||'Process';
+  const owners=[...new Set(steps.map(s=>s.owner).filter(Boolean))];
+  const sevC={R:'#8a2020',A:'#7a4e10',C:'#1a3060',I:'#4a4945'};
+
+  const rows=steps.map((s,i)=>{
+    const key=String(s.id);
+    const cells=owners.map(o=>{const v=raciData[key+'__'+o]||'';return '<td style="padding:8px 10px;border:1px solid #e0dfd8;text-align:center;font-weight:600;color:'+(sevC[v]||'#aaa')+';">'+(v||'—')+'</td>';}).join('');
+    return '<tr><td style="padding:8px 10px;border:1px solid #e0dfd8;font-size:11px;color:#888;">'+(i+1)+'</td><td style="padding:8px 10px;border:1px solid #e0dfd8;"><b>'+esc(s.name||TL[s.type])+'</b><br><span style="font-size:11px;color:#888;">'+TL[s.type]+'</span></td>'+cells+'</tr>';
+  }).join('');
+
+  const html=`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${esc(name)} — RACI Matrix</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#faf9f7;padding:20px;color:#1a1917;line-height:1.5;}
+h1{font-size:20px;color:#1a3a2a;margin-bottom:4px;}
+.sub{font-size:12px;color:#8a8880;margin-bottom:16px;}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
+th{padding:8px 10px;background:#f2f0ec;text-align:center;border:1px solid #e0dfd8;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8a8880;}
+th:first-child{text-align:left;}
+.legend{font-size:11px;color:#aaa;}
+.legend b{font-weight:700;}
+</style>
+</head>
+<body>
+<h1>${esc(name)} — RACI Matrix</h1>
+<p class="sub">Generated ${new Date().toLocaleDateString()}</p>
+<table><thead><tr><th style="width:40px;">#</th><th>Step</th>${owners.map(o=>'<th>'+esc(o)+'</th>').join('')}</tr></thead><tbody>${rows}</tbody></table>
+<p class="legend"><b>R</b>=Responsible &nbsp;<b>A</b>=Accountable &nbsp;<b>C</b>=Consulted &nbsp;<b>I</b>=Informed</p>
+<script>
+(function(){
+  function notify(){window.parent.postMessage({type:'rise-height',height:document.body.scrollHeight},'*');}
+  window.addEventListener('load',notify);
+  window.addEventListener('resize',notify);
+  new ResizeObserver(notify).observe(document.body);
+  setTimeout(notify,200);
+})();
+<\/script>
+</body>
+</html>`;
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/\s+/g,'-').toLowerCase()+'-rise-raci.html';a.click();
+}
 
 // Update doc count on load
 document.addEventListener('DOMContentLoaded', () => {
