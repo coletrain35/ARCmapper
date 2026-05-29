@@ -4290,6 +4290,7 @@ body{overflow:auto;padding:0;margin:0;background:var(--bg);font-family:var(--san
     document.getElementById('modal-prev').style.display = idx > 0 ? '' : 'none';
     document.getElementById('modal-next').style.display = idx < steps.length-1 ? '' : 'none';
 
+    window.scrollTo(0,0);
     document.getElementById('modal-overlay').classList.add('open');
     notifyHeight();
   }
@@ -4514,6 +4515,7 @@ ${clone.outerHTML}
     document.getElementById('modal-prev').style.display = idx > 0 ? '' : 'none';
     document.getElementById('modal-next').style.display = idx < steps.length-1 ? '' : 'none';
 
+    window.scrollTo(0,0);
     document.getElementById('modal-overlay').classList.add('open');
     notifyHeight();
   }
