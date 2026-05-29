@@ -4164,8 +4164,9 @@ body{overflow:auto;padding:0;margin:0;background:var(--bg);font-family:var(--san
 .zoom-controls{position:fixed;bottom:16px;right:16px;z-index:100;}
 .sp-edit-btn,.sp-close{display:none!important;}
 
-.modal-overlay{position:fixed;inset:0;background:rgba(26,25,23,0.5);backdrop-filter:blur(3px);z-index:200;display:none;align-items:flex-start;justify-content:center;padding-top:5vh;overflow-y:auto;}
+.modal-overlay{position:absolute;left:0;width:100%;top:0;height:100vh;background:rgba(26,25,23,0.5);backdrop-filter:blur(3px);z-index:200;display:none;align-items:flex-start;justify-content:center;padding-top:5vh;overflow-y:auto;}
 .modal-overlay.open{display:flex;}
+body.modal-open{overflow:hidden;}
 .modal-card{background:var(--surface);border-radius:16px;width:90vw;max-width:480px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.25);padding:24px;position:relative;margin-bottom:5vh;}
 .modal-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-weight:700;color:var(--ink2);line-height:1;}
 .modal-close:hover{background:var(--bg);color:var(--ink);}
@@ -4290,13 +4291,17 @@ body{overflow:auto;padding:0;margin:0;background:var(--bg);font-family:var(--san
     document.getElementById('modal-prev').style.display = idx > 0 ? '' : 'none';
     document.getElementById('modal-next').style.display = idx < steps.length-1 ? '' : 'none';
 
-    window.scrollTo(0,0);
-    document.getElementById('modal-overlay').classList.add('open');
+    var overlay = document.getElementById('modal-overlay');
+    overlay.style.top = (window.pageYOffset || document.documentElement.scrollTop) + 'px';
+    overlay.style.height = window.innerHeight + 'px';
+    document.body.classList.add('modal-open');
+    overlay.classList.add('open');
     notifyHeight();
   }
 
   function closeModal(){
     document.getElementById('modal-overlay').classList.remove('open');
+    document.body.classList.remove('modal-open');
     currentStepId = null;
   }
 
@@ -4392,8 +4397,9 @@ h1{font-size:20px;color:#1a3a2a;margin-bottom:4px;}
 .sp-edit-btn,.sp-close{display:none!important;}
 .p-node,.p-context,.t-step{cursor:pointer!important;}
 
-.modal-overlay{position:fixed;inset:0;background:rgba(26,25,23,0.5);backdrop-filter:blur(3px);z-index:200;display:none;align-items:flex-start;justify-content:center;padding-top:5vh;overflow-y:auto;}
+.modal-overlay{position:absolute;left:0;width:100%;top:0;height:100vh;background:rgba(26,25,23,0.5);backdrop-filter:blur(3px);z-index:200;display:none;align-items:flex-start;justify-content:center;padding-top:5vh;overflow-y:auto;}
 .modal-overlay.open{display:flex;}
+body.modal-open{overflow:hidden;}
 .modal-card{background:var(--surface);border-radius:16px;width:90vw;max-width:480px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.25);padding:24px;position:relative;margin-bottom:5vh;}
 .modal-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-weight:700;color:var(--ink2);line-height:1;}
 .modal-close:hover{background:var(--bg);color:var(--ink);}
@@ -4515,13 +4521,17 @@ ${clone.outerHTML}
     document.getElementById('modal-prev').style.display = idx > 0 ? '' : 'none';
     document.getElementById('modal-next').style.display = idx < steps.length-1 ? '' : 'none';
 
-    window.scrollTo(0,0);
-    document.getElementById('modal-overlay').classList.add('open');
+    var overlay = document.getElementById('modal-overlay');
+    overlay.style.top = (window.pageYOffset || document.documentElement.scrollTop) + 'px';
+    overlay.style.height = window.innerHeight + 'px';
+    document.body.classList.add('modal-open');
+    overlay.classList.add('open');
     notifyHeight();
   }
 
   function closeModal(){
     document.getElementById('modal-overlay').classList.remove('open');
+    document.body.classList.remove('modal-open');
     currentStepId = null;
   }
 
