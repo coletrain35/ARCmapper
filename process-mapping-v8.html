@@ -4368,39 +4368,184 @@ function exportOwnershipRise(){
   if(!owrap||!steps.length){alert('Add steps with owners first.');return;}
   const name=document.getElementById('proc-name').value||'Process Ownership';
   const viewLabel=currentOwnerView==='lens'?'Perspective Lens':'Threaded Journey';
+  const d=gather();
 
   const clone=owrap.cloneNode(true);
   clone.querySelectorAll('button, .add-raci-btn, .raci-dropdown, .role-selector').forEach(el=>el.remove());
-  clone.querySelectorAll('[onclick]').forEach(el=>el.removeAttribute('onclick'));
 
   const styles=document.querySelector('style').innerHTML;
   const html=`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(name)} — Ownership View</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 ${styles}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#faf9f7;padding:20px;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#faf9f7;padding:20px;overflow:auto;}
 h1{font-size:20px;color:#1a3a2a;margin-bottom:4px;}
 .sub{font-size:12px;color:#8a8880;margin-bottom:16px;}
 .owner-wrap{max-width:100%;box-shadow:none;}
-.top-nav,.save-bar,.flow-toolbar{display:none!important;}
+.top-nav,.save-bar,.flow-toolbar,.side-panel{display:none!important;}
+.sp-edit-btn,.sp-close{display:none!important;}
+.p-node,.p-context,.t-step{cursor:pointer!important;}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(26,25,23,0.5);backdrop-filter:blur(3px);z-index:200;display:none;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal-card{background:var(--surface);border-radius:16px;width:90vw;max-width:480px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.25);padding:24px;position:relative;}
+.modal-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-weight:700;color:var(--ink2);line-height:1;}
+.modal-close:hover{background:var(--bg);color:var(--ink);}
+.modal-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--acc);margin-bottom:4px;}
+.modal-title{font-size:18px;font-weight:800;color:var(--ink);margin-bottom:12px;line-height:1.3;}
+.modal-section{margin-top:16px;}
+.modal-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-muted);margin-bottom:6px;}
+.modal-desc{font-size:14px;color:var(--ink2);line-height:1.7;}
+.modal-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.modal-tag{padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:99px;font-size:11px;font-weight:600;color:var(--ink-muted);}
+.modal-raci{display:flex;flex-wrap:wrap;gap:12px;}
+.modal-raci-zone{flex:1;min-width:120px;background:var(--bg);border-radius:8px;padding:12px;}
+.modal-zone-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted);margin-bottom:6px;}
+.modal-zone-name{font-size:13px;font-weight:600;color:var(--ink);padding:3px 0;}
+.modal-risk{background:var(--bg);border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;font-size:13px;}
+.modal-risk-title{font-weight:600;margin-bottom:2px;}
+.modal-risk-mit{font-size:12px;color:var(--ink-muted);}
+.modal-nav{display:flex;gap:8px;margin-top:20px;}
+.modal-nav-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-weight:600;font-size:13px;cursor:pointer;color:var(--ink);}
+.modal-nav-btn:hover{background:var(--bg);border-color:var(--border-strong);}
+.modal-empty{color:var(--ink-muted);font-style:italic;font-size:13px;}
 </style>
 </head>
 <body>
 <h1>${esc(name)}</h1>
 <p class="sub">Ownership View &middot; ${viewLabel} &middot; ${new Date().toLocaleDateString()}</p>
 ${clone.outerHTML}
+
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <div class="modal-type" id="modal-type"></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-tags" id="modal-tags"></div>
+    <div class="modal-section">
+      <div class="modal-label">Instructions</div>
+      <div class="modal-desc" id="modal-desc"></div>
+    </div>
+    <div class="modal-section" id="modal-raci-section">
+      <div class="modal-label">Responsibility</div>
+      <div class="modal-raci" id="modal-raci"></div>
+    </div>
+    <div class="modal-section" id="modal-risk-section">
+      <div class="modal-label">Risks & Controls</div>
+      <div id="modal-risks"></div>
+    </div>
+    <div class="modal-nav">
+      <button class="modal-nav-btn" id="modal-prev" onclick="navigateDetail(-1)" style="display:none;">← Previous</button>
+      <button class="modal-nav-btn" id="modal-next" onclick="navigateDetail(1)" style="display:none;">Next →</button>
+    </div>
+  </div>
+</div>
+
 <script>
-(function(){
-  function notify(){window.parent.postMessage({type:'rise-height',height:document.body.scrollHeight},'*');}
-  window.addEventListener('load',notify);
-  window.addEventListener('resize',notify);
-  new ResizeObserver(notify).observe(document.body);
-  setTimeout(notify,200);
-})();
+  var steps = ${JSON.stringify(d.steps)};
+  var risks = ${JSON.stringify(d.risks)};
+  var raciData = ${JSON.stringify(d.raciData)};
+  var TL = { task:'Task',decision:'Decision',handoff:'Handoff',subprocess:'Subprocess',start:'Start',end:'End' };
+  var currentStepId = null;
+
+  function esc(str){ if(!str)return''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function openDetailPanel(id){
+    var s = steps.find(function(x){ return String(x.id) === String(id); });
+    if(!s) return;
+    currentStepId = s.id;
+
+    document.getElementById('modal-type').textContent = TL[s.type];
+    document.getElementById('modal-title').textContent = s.name || TL[s.type];
+
+    var tagsHtml = '';
+    if(s.owner) tagsHtml += '<span class="modal-tag">Owner: '+esc(s.owner)+'</span>';
+    if(s.dur) tagsHtml += '<span class="modal-tag">Est: '+esc(s.dur)+'</span>';
+    (s.tags||[]).forEach(function(t){ tagsHtml += '<span class="modal-tag">'+esc(t)+'</span>'; });
+    document.getElementById('modal-tags').innerHTML = tagsHtml;
+
+    var descHtml = s.desc ? esc(s.desc).replace(/\\n/g,'<br>') : '<span class="modal-empty">No instructions provided.</span>';
+    document.getElementById('modal-desc').innerHTML = descHtml;
+
+    var raciZones = {R:[],A:[],C:[],I:[]};
+    var allOwners = [];
+    var seen = {};
+    steps.forEach(function(x){ if(x.owner&&!seen[x.owner]){ seen[x.owner]=1; allOwners.push(x.owner); } });
+    allOwners.forEach(function(o){
+      var val = raciData[String(s.id)+'__'+o];
+      if(val && raciZones[val]) raciZones[val].push(o);
+    });
+
+    var labels = {R:'Responsible',A:'Accountable',C:'Consulted',I:'Informed'};
+    var raciHtml = '';
+    ['R','A','C','I'].forEach(function(r){
+      if(raciZones[r].length){
+        raciHtml += '<div class="modal-raci-zone"><div class="modal-zone-label">'+labels[r]+'</div>';
+        raciZones[r].forEach(function(o){ raciHtml += '<div class="modal-zone-name">'+esc(o)+'</div>'; });
+        raciHtml += '</div>';
+      }
+    });
+
+    var raciSection = document.getElementById('modal-raci-section');
+    if(!raciHtml) raciSection.style.display = 'none';
+    else { raciSection.style.display = ''; document.getElementById('modal-raci').innerHTML = raciHtml; }
+
+    var risksHtml = '';
+    (s.stepRisks||[]).forEach(function(r){
+      if(r && r.risk){
+        var col = r.sev==='H'?'#e24b4a':r.sev==='M'?'#ef9f27':'#38a169';
+        risksHtml += '<div class="modal-risk" style="border-left:4px solid '+col+';">';
+        risksHtml += '<div class="modal-risk-title">'+esc(r.risk)+'</div>';
+        if(r.mit) risksHtml += '<div class="modal-risk-mit">Mitigation: '+esc(r.mit)+'</div>';
+        risksHtml += '</div>';
+      }
+    });
+
+    var riskSection = document.getElementById('modal-risk-section');
+    if(!risksHtml) riskSection.style.display = 'none';
+    else { riskSection.style.display = ''; document.getElementById('modal-risks').innerHTML = risksHtml; }
+
+    var idx = steps.findIndex(function(x){ return String(x.id) === String(s.id); });
+    document.getElementById('modal-prev').style.display = idx > 0 ? '' : 'none';
+    document.getElementById('modal-next').style.display = idx < steps.length-1 ? '' : 'none';
+
+    document.getElementById('modal-overlay').classList.add('open');
+    notifyHeight();
+  }
+
+  function closeModal(){
+    document.getElementById('modal-overlay').classList.remove('open');
+    currentStepId = null;
+  }
+
+  function navigateDetail(dir){
+    if(!currentStepId) return;
+    var idx = steps.findIndex(function(x){ return String(x.id) === String(currentStepId); });
+    var next = idx + dir;
+    if(next >= 0 && next < steps.length) openDetailPanel(steps[next].id);
+  }
+
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){ closeModal(); }
+    if(document.getElementById('modal-overlay').classList.contains('open')){
+      if(e.key==='ArrowLeft') navigateDetail(-1);
+      if(e.key==='ArrowRight') navigateDetail(1);
+    }
+  });
+
+  function notifyHeight(){
+    window.parent.postMessage({type:'rise-height',height:document.body.scrollHeight},'*');
+  }
+  window.addEventListener('load',function(){ notifyHeight(); });
+  window.addEventListener('resize',notifyHeight);
+  new ResizeObserver(notifyHeight).observe(document.body);
+  setTimeout(notifyHeight,300);
+  setTimeout(notifyHeight,800);
 <\/script>
 </body>
 </html>`;
