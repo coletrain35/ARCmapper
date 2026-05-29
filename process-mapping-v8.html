@@ -589,6 +589,26 @@ body.panel-open .side-panel { right: 0; }
 .sp-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .sp-tag { padding: 6px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 99px; font-size: 12px; font-weight: 600; color: var(--ink-muted); }
 
+/* ── STEP IMAGES ── */
+.step-image-wrap { margin-top: 12px; padding: 12px; border: 2px dashed var(--border); border-radius: var(--radius-sm); background: var(--bg); transition: all .2s; }
+.step-image-wrap.has-image { border-style: solid; border-color: var(--border-strong); background: var(--surface); }
+.step-image-drop { text-align: center; padding: 16px; color: var(--ink3); font-size: 13px; cursor: pointer; transition: all .2s; }
+.step-image-drop:hover { color: var(--acc); background: var(--acc-light); border-radius: var(--radius-sm); }
+.step-image-drop.drag-over { background: var(--acc-soft); color: var(--acc); }
+.step-image-thumb { max-height: 120px; border-radius: var(--radius-sm); cursor: pointer; box-shadow: var(--shadow-sm); transition: transform .2s; }
+.step-image-thumb:hover { transform: scale(1.02); }
+.step-image-actions { display: flex; gap: 8px; margin-top: 8px; }
+.step-image-rm { font-family: var(--sans); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--danger); background: var(--danger-light); color: var(--danger); cursor: pointer; transition: all .2s; }
+.step-image-rm:hover { background: var(--danger); color: #fff; }
+.step-image-hint { font-size: 11px; color: var(--ink3); margin-top: 6px; }
+
+/* ── LIGHTBOX ── */
+.img-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 24px; }
+.img-lightbox.open { display: flex; }
+.img-lightbox img { max-width: 90vw; max-height: 90vh; border-radius: var(--radius); box-shadow: 0 16px 48px rgba(0,0,0,0.3); }
+.img-lightbox-close { position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s; }
+.img-lightbox-close:hover { background: rgba(255,255,255,0.3); }
+
 /* ── ULTIMATE CANVAS ── */
 .canvas-wrapper { position: relative; width: 100%; min-height: 800px; height: 80vh; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; box-shadow: inset 0 0 100px rgba(0,0,0,0.02); display: flex; justify-content: center; align-items: flex-start; }
 .canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
@@ -771,11 +791,21 @@ body.panel-open .side-panel { right: 0; }
       <div class="sp-label">Responsibility</div>
       <div class="sp-raci" id="sp-raci"></div>
     </div>
+    <div class="sp-section" id="sp-image-section" style="display:none;">
+      <div class="sp-label">Image</div>
+      <div id="sp-image"></div>
+    </div>
     <div class="sp-section" id="sp-risks-section">
       <div class="sp-label">Risks & Controls</div>
       <div id="sp-risks"></div>
     </div>
   </div>
+</div>
+
+<!-- Image Lightbox -->
+<div class="img-lightbox" id="img-lightbox" onclick="closeImageLightbox()">
+  <button class="img-lightbox-close" onclick="event.stopPropagation();closeImageLightbox()">&times;</button>
+  <img id="img-lightbox-img" src="" alt="">
 </div>
 
 <div class="page">
@@ -1036,6 +1066,184 @@ const docKey=id=>'pm-doc-'+id;
 const STORE_KEY='process-map-v4';
 let steps=[],risks=[],raciData={},sId=0,rId=0,saveTimer=null,dirty=false,flowMode='TB',heatOn=false,currentDocId=null,activeTagFilter=null,activeBranchTabs={};
 
+/* ── INDEXEDDB IMAGE STORE ── */
+const IMG_DB='PMImages',IMG_STORE='images';let imgDB=null;
+function openImageDB(){
+  return new Promise((res,rej)=>{
+    if(imgDB){res(imgDB);return;}
+    const req=indexedDB.open(IMG_DB,1);
+    req.onerror=()=>rej(req.error);
+    req.onsuccess=()=>{imgDB=req.result;res(imgDB);};
+    req.onupgradeneeded=e=>{e.target.result.createObjectStore(IMG_STORE,{keyPath:'stepId'});};
+  });
+}
+async function saveImage(stepId,data,name){
+  const db=await openImageDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(IMG_STORE,'readwrite');
+    const store=tx.objectStore(IMG_STORE);
+    const putReq=store.put({stepId:String(stepId),data,name,updated:Date.now()});
+    putReq.onsuccess=()=>res(true);
+    putReq.onerror=()=>rej(putReq.error);
+  });
+}
+async function getImage(stepId){
+  const db=await openImageDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(IMG_STORE,'readonly');
+    const store=tx.objectStore(IMG_STORE);
+    const getReq=store.get(String(stepId));
+    getReq.onsuccess=()=>res(getReq.result||null);
+    getReq.onerror=()=>rej(getReq.error);
+  });
+}
+async function deleteImage(stepId){
+  const db=await openImageDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(IMG_STORE,'readwrite');
+    const store=tx.objectStore(IMG_STORE);
+    const delReq=store.delete(String(stepId));
+    delReq.onsuccess=()=>res(true);
+    delReq.onerror=()=>rej(delReq.error);
+  });
+}
+async function copyImage(fromStepId,toStepId){
+  const rec=await getImage(fromStepId);
+  if(!rec)return;
+  await saveImage(toStepId,rec.data,rec.name);
+}
+
+/* ── IMAGE COMPRESSION ── */
+function compressImageToWebP(file){
+  return new Promise((res,rej)=>{
+    if(file.type==='image/svg+xml'){rej(new Error('SVG files are not allowed for security.'));return;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        canvas.width=img.width;canvas.height=img.height;
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0);
+        try{
+          const dataUrl=canvas.toDataURL('image/webp',0.7);
+          res({data:dataUrl,name:file.name});
+        }catch(err){rej(err);}
+      };
+      img.onerror=()=>rej(new Error('Failed to load image.'));
+      img.src=e.target.result;
+    };
+    reader.onerror=()=>rej(new Error('Failed to read file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ── IMAGE UI HELPERS ── */
+function openImageLightbox(dataUrl){
+  const box=document.getElementById('img-lightbox');
+  const img=document.getElementById('img-lightbox-img');
+  img.src=dataUrl;
+  box.classList.add('open');
+}
+function closeImageLightbox(){
+  document.getElementById('img-lightbox').classList.remove('open');
+  document.getElementById('img-lightbox-img').src='';
+}
+
+async function handleImageUpload(stepId,file){
+  try{
+    const compressed=await compressImageToWebP(file);
+    await saveImage(stepId,compressed.data,compressed.name);
+    const s=steps.find(x=>String(x.id)===String(stepId));
+    if(s){s.hasImage=true;markDirty();}
+    refreshStepImage(stepId);
+  }catch(err){alert('Image upload failed: '+err.message);}
+}
+
+async function removeStepImage(stepId){
+  if(!confirm('Remove this image?'))return;
+  await deleteImage(stepId);
+  const s=steps.find(x=>String(x.id)===String(stepId));
+  if(s){s.hasImage=false;markDirty();}
+  refreshStepImage(stepId);
+}
+
+function refreshStepImage(stepId){
+  const wrap=document.getElementById('si-wrap-'+stepId);
+  const inner=document.getElementById('si-inner-'+stepId);
+  if(!wrap||!inner)return;
+  const s=steps.find(x=>String(x.id)===String(stepId));
+  if(!s)return;
+  wrap.classList.toggle('has-image',s.hasImage);
+  wrap.setAttribute('data-has-image',s.hasImage?'1':'0');
+  populateStepImage(wrap,inner,s);
+}
+
+async function populateStepImage(wrap,inner,s){
+  if(!s.hasImage){
+    inner.innerHTML=`<div class="step-image-drop" onclick="triggerImageUpload(${s.id})">
+      <div style="font-size:20px;margin-bottom:4px;">📎</div>
+      <div>Drop image or click to upload</div>
+      <div class="step-image-hint">Supports JPG, PNG, GIF (converts to WebP)</div>
+    </div>
+    <input type="file" id="si-file-${s.id}" accept="image/*" style="display:none;" onchange="onImageFileChange(event,${s.id})">`;
+    // Attach drag events to the wrap
+    wrap.ondragover=e=>{e.preventDefault();e.currentTarget.querySelector('.step-image-drop')?.classList.add('drag-over');};
+    wrap.ondragleave=e=>{e.currentTarget.querySelector('.step-image-drop')?.classList.remove('drag-over');};
+    wrap.ondrop=e=>{e.preventDefault();e.currentTarget.querySelector('.step-image-drop')?.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)handleImageUpload(s.id,f);};
+    return;
+  }
+  inner.innerHTML='<div style="color:var(--ink3);font-size:13px;padding:8px 0;">Loading image…</div>';
+  try{
+    const rec=await getImage(s.id);
+    if(rec&&rec.data){
+      inner.innerHTML=`<img class="step-image-thumb" src="${rec.data}" alt="${esc(rec.name||'Step image')}" onclick="openImageLightbox('${rec.data}')">
+      <div class="step-image-actions">
+        <button class="step-image-rm" onclick="removeStepImage(${s.id})">Remove image</button>
+      </div>`;
+    }else{
+      s.hasImage=false;markDirty();
+      populateStepImage(wrap,inner,s);
+    }
+  }catch(err){
+    inner.innerHTML='<div style="color:var(--danger);font-size:13px;padding:8px 0;">Failed to load image.</div>';
+  }
+}
+
+function triggerImageUpload(stepId){
+  const input=document.getElementById('si-file-'+stepId);
+  if(input)input.click();
+}
+function onImageFileChange(e,stepId){
+  const f=e.target.files[0];
+  if(f)handleImageUpload(stepId,f);
+  e.target.value='';
+}
+
+async function initStepImages(){
+  document.querySelectorAll('.step-image-wrap[data-has-image]').forEach(wrap=>{
+    const sid=wrap.getAttribute('data-step-id');
+    const inner=wrap.querySelector('.step-image-inner');
+    const s=steps.find(x=>String(x.id)===String(sid));
+    if(s&&inner)populateStepImage(wrap,inner,s);
+  });
+}
+
+async function embedImagesForExport(d){
+  if(!d.steps||!d.steps.length)return d;
+  const stepsOut=[];
+  for(const s of d.steps){
+    if(s.hasImage){
+      try{
+        const rec=await getImage(s.id);
+        if(rec&&rec.data){stepsOut.push({...s,imageData:rec.data});continue;}
+      }catch(e){}
+    }
+    stepsOut.push(s);
+  }
+  return{...d,steps:stepsOut};
+}
+
 /* ── CONCEPT A+ ENHANCEMENTS ── */
 let viewMode='detail',activeStepId=null;
 
@@ -1233,15 +1441,25 @@ function genId(){return Date.now().toString(36)+Math.random().toString(36).slice
 
 /* ── IMPORT ── */
 function triggerImport(){document.getElementById('import-file').click();}
-function handleImport(input){
+async function handleImport(input){
   const file=input.files[0];if(!file)return;
   const reader=new FileReader();
-  reader.onload=e=>{
+  reader.onload=async e=>{
     try{
       const html=e.target.result;
       const m=html.match(/data-pmdata='([^']+)'/);
       if(!m)throw new Error('No process data found. Export this document from the tool first.');
       const d=JSON.parse(decodeURIComponent(m[1]));
+      // Migrate any embedded imageData to IndexedDB
+      if(d.steps){
+        for(const s of d.steps){
+          if(s.imageData){
+            await saveImage(s.id,s.imageData,'imported-image.webp');
+            s.hasImage=true;
+            delete s.imageData;
+          }
+        }
+      }
       clearTimeout(saveTimer);saveNow();currentDocId=genId();loadData(d);saveNow();updateDocCount();
       alert(`Imported "${d.name||'Untitled'}" successfully.`);
     }catch(err){alert('Import failed: '+err.message);}
@@ -1301,7 +1519,7 @@ function loadData(d){
       branches=[{label:'Yes',targetId:String(s.branchYes||'')},{label:'No',targetId:String(s.branchNo||'')}];
     }
     if(!branches) branches=s.type==='decision'?[{label:'Yes',targetId:''},{label:'No',targetId:''}]:[];
-    steps.push({...s,branches,nextId:s.nextId||'',stepRisks:s.stepRisks||[],tags:s.tags||[]});
+    steps.push({...s,branches,nextId:s.nextId||'',stepRisks:s.stepRisks||[],tags:s.tags||[],hasImage:s.hasImage||false});
   });
   risks=[];rId=0;(d.risks||[]).forEach(r=>{rId=Math.max(rId,r.id);risks.push({...r});});
   raciData=d.raciData||{};
@@ -1342,12 +1560,14 @@ function addStep(type){
   renderSteps();markDirty();
   setTimeout(()=>{const el=document.getElementById('sn-'+id);if(el)el.focus();},40);
 }
-function removeStep(id){
+async function removeStep(id){
   // Clear any branch targets or nextId pointing to this step
   steps.forEach(s=>{
     if(s.branches) s.branches.forEach(b=>{if(String(b.targetId)===String(id))b.targetId='';});
     if(String(s.nextId)===String(id)) s.nextId='';
   });
+  const s=steps.find(x=>x.id===id);
+  if(s&&s.hasImage){try{await deleteImage(id);}catch(e){}}
   steps=steps.filter(s=>s.id!==id);renderSteps();markDirty();
 }
 function moveStep(id,dir){
@@ -1450,7 +1670,7 @@ function addStepToBranch(stepId,bi,inputId){
   
   // Create new step (no owner inherited — leave blank for user to fill)
   const newId=++sId;
-  const newStep={id:newId,type:'task',name:name,desc:'',owner:'',dur:'',branches:[],nextId:'',subprocId:'',stepRisks:[],tags:[]};
+  const newStep={id:newId,type:'task',name:name,desc:'',owner:'',dur:'',branches:[],nextId:'',subprocId:'',stepRisks:[],tags:[],hasImage:false};
   steps.push(newStep);
   
   const branch=s.branches[bi];
@@ -1601,6 +1821,12 @@ function stepHeatLevel(s){
   return 'none';
 }
 
+function renderStepImageSection(s){
+  return `<div class="step-image-wrap${s.hasImage?' has-image':''}" id="si-wrap-${s.id}" data-step-id="${s.id}" data-has-image="${s.hasImage?'1':'0'}">
+  <div class="step-image-inner" id="si-inner-${s.id}"></div>
+</div>`;
+}
+
 function renderStepCard(s,idx,isNested){
   const tc=TC[s.type];
   const isDecision=s.type==='decision';
@@ -1703,7 +1929,8 @@ function renderStepCard(s,idx,isNested){
             </div>`;
           }).join('')}
           ${(s.branches||[]).length<5?`<button class="branch-add-btn" onclick="addBranch(${s.id})">+ add path</button>`:''}
-        </div>`:''}
+         </div>`:''}
+        ${renderStepImageSection(s)}
         <div class="step-risks" id="sr-wrap-${s.id}">
           <div class="step-risk-hdr">
             <span class="step-risk-title">Step risks${s.stepRisks.length?' ('+s.stepRisks.length+')':''}</span>
@@ -1711,7 +1938,8 @@ function renderStepCard(s,idx,isNested){
           </div>
           ${srHtml}
         </div>
-      </div>`:`<div class="step-risks" id="sr-wrap-${s.id}">
+      </div>`:`${renderStepImageSection(s)}
+        <div class="step-risks" id="sr-wrap-${s.id}">
         <div class="step-risk-hdr">
           <span class="step-risk-title">Step risks</span>
           <button class="step-risk-add" onclick="addStepRisk(${s.id})">+ add</button>
@@ -1793,6 +2021,15 @@ function renderStepsLinear(visible,tree,inlinedIds){
     const realIdx=steps.indexOf(s);
     const wrap=document.createElement('div');wrap.className='step-branch-wrap';
     wrap.innerHTML=renderStepCard(s,realIdx);
+
+    // If decision with branches, render tabbed interface so users can add steps inline
+    if(s.type==='decision'&&s.branches&&s.branches.length>0){
+      const branchContainer=createBranchContainer(s,realIdx);
+      if(branchContainer){
+        wrap.appendChild(branchContainer);
+      }
+    }
+
     tree.appendChild(wrap);
     
     // Sequential connector
@@ -2083,6 +2320,7 @@ function renderSteps(){
     renderStepsLinear(visible,tree,inlinedIds);
   }
 
+  initStepImages();
   updMetrics();
   if(document.getElementById('tab-flow').style.display!=='none') renderInteractiveCanvas();
   if(document.getElementById('tab-owner').style.display!=='none') renderOwnerView();
@@ -2710,7 +2948,7 @@ function exportFlowPDF(){
   const win=window.open('','_blank');win.document.write(html);win.document.close();win.addEventListener('load',()=>{win.focus();win.print();});
 }
 
-function exportInteractiveFlowchart(){
+async function exportInteractiveFlowchart(){
   const wrap = document.getElementById('flow-svg-wrap');
   const panel = document.getElementById('detail-panel');
   if(!wrap || !panel) { alert('Please view the flowchart first.'); return; }
@@ -2719,7 +2957,7 @@ function exportInteractiveFlowchart(){
   const styles = document.querySelector('style').innerHTML;
   const sidePanelHtml = panel.outerHTML.replace('<div class="sp-header">', '<button class="sp-custom-close" onclick="closeDetailPanel()">×</button><div class="sp-header">');
   
-  const d=gather();
+  const d=await embedImagesForExport(gather());
   
   const html=`<!DOCTYPE html>
 <html lang="en">
@@ -2815,6 +3053,15 @@ body { overflow: hidden; padding: 0; margin: 0; background: var(--bg); }
     const riskSection = document.getElementById('sp-risks-section');
     if(!risksHtml) riskSection.style.display = 'none';
     else { riskSection.style.display = 'block'; document.getElementById('sp-risks').innerHTML = risksHtml; }
+
+    const imageSection = document.getElementById('sp-image-section');
+    const imageContainer = document.getElementById('sp-image');
+    if(s.imageData){
+      imageSection.style.display = 'block';
+      imageContainer.innerHTML = '<img src="'+esc(s.imageData)+'" style="max-width:100%;border-radius:8px;" alt="Step image">';
+    }else{
+      imageSection.style.display = 'none';
+    }
     
     document.body.classList.add('panel-open');
   }
@@ -3660,7 +3907,23 @@ function openDetailPanel(id){
   const riskSection = document.getElementById('sp-risks-section');
   if(!risksHtml) riskSection.style.display = 'none';
   else { riskSection.style.display = 'block'; document.getElementById('sp-risks').innerHTML = risksHtml; }
-  
+
+  const imageSection = document.getElementById('sp-image-section');
+  const imageContainer = document.getElementById('sp-image');
+  if(s.hasImage){
+    imageSection.style.display = 'block';
+    imageContainer.innerHTML = '<div style="color:var(--ink3);font-size:13px;padding:8px 0;">Loading image…</div>';
+    getImage(s.id).then(rec=>{
+      if(rec&&rec.data){
+        imageContainer.innerHTML = `<img src="${rec.data}" style="max-width:100%;border-radius:8px;cursor:pointer;box-shadow:var(--shadow-sm);" onclick="openImageLightbox('${rec.data}')" alt="${esc(rec.name||'Step image')}">`;
+      }else{
+        imageSection.style.display = 'none';
+      }
+    }).catch(()=>{imageSection.style.display='none';});
+  }else{
+    imageSection.style.display = 'none';
+  }
+
   document.body.classList.add('panel-open');
 }
 
@@ -3881,7 +4144,7 @@ ${ownerHtml}
   const win=window.open('','_blank');win.document.write(html);win.document.close();win.addEventListener('load',()=>{win.focus();win.print();});
 }
 
-function exportOwnershipInteractive(){
+async function exportOwnershipInteractive(){
   const name=document.getElementById('proc-name').value||'Process Ownership';
   const styles=document.querySelector('style').innerHTML;
   const panel=document.getElementById('detail-panel');
@@ -3890,7 +4153,7 @@ function exportOwnershipInteractive(){
   const owrap=document.querySelector('.owner-wrap');
   if(!owrap||!steps.length){alert('Add steps with owners first.');return;}
   
-  const d=gather();
+  const d=await embedImagesForExport(gather());
   const viewLabel=currentOwnerView==='lens'?'Perspective Lens':'Threaded Journey';
   const ownerHtml=owrap.outerHTML;
   
@@ -3980,6 +4243,15 @@ ${sidePanelHtml}
     const riskSection = document.getElementById('sp-risks-section');
     if(!risksHtml)riskSection.style.display='none';
     else{riskSection.style.display='block';document.getElementById('sp-risks').innerHTML=risksHtml;}
+
+    const imageSection = document.getElementById('sp-image-section');
+    const imageContainer = document.getElementById('sp-image');
+    if(s.imageData){
+      imageSection.style.display = 'block';
+      imageContainer.innerHTML = '<img src="'+esc(s.imageData)+'" style="max-width:100%;border-radius:8px;" alt="Step image">';
+    }else{
+      imageSection.style.display = 'none';
+    }
     
     document.body.classList.add('panel-open');
   }
@@ -4138,13 +4410,13 @@ document.addEventListener('click', () => {
    RISE EMBED EXPORTS (iframe-safe, auto-height)
    ══════════════════════════════════════════ */
 
-function exportFlowRise(){
+async function exportFlowRise(){
   const wrap=document.getElementById('flow-svg-wrap');
   if(!wrap||!steps.length){alert('Please view the flowchart first.');return;}
 
   const name=document.getElementById('proc-name').value||'Process Flowchart';
   const styles=document.querySelector('style').innerHTML;
-  const d=gather();
+  const d=await embedImagesForExport(gather());
 
   const html=`<!DOCTYPE html>
 <html lang="en">
@@ -4218,16 +4490,24 @@ body{overflow:auto;padding:0;margin:0;background:var(--bg);font-family:var(--san
         <div class="popover-label">Responsibility</div>
         <div class="popover-raci" id="pv-raci"></div>
       </div>
-      <div class="popover-section" id="pv-risk-section">
-        <div class="popover-label">Risks & Controls</div>
-        <div id="pv-risks"></div>
+      <div class="popover-section" id="pv-image-section">
+        <div class="popover-label">Image</div>
+        <div id="pv-image"></div>
       </div>
-      <div class="popover-nav">
-        <button class="popover-nav-btn" id="pv-prev" onclick="navigateDetail(-1)">← Previous</button>
-        <button class="popover-nav-btn" id="pv-next" onclick="navigateDetail(1)">Next →</button>
-      </div>
+    <div class="popover-section" id="pv-image-section">
+      <div class="popover-label">Image</div>
+      <div id="pv-image"></div>
+    </div>
+    <div class="popover-section" id="pv-risk-section">
+      <div class="popover-label">Risks & Controls</div>
+      <div id="pv-risks"></div>
+    </div>
+    <div class="popover-nav">
+      <button class="popover-nav-btn" id="pv-prev" onclick="navigateDetail(-1)">← Previous</button>
+      <button class="popover-nav-btn" id="pv-next" onclick="navigateDetail(1)">Next →</button>
     </div>
   </div>
+</div>
 
 <script>
   var steps = ${JSON.stringify(d.steps)};
@@ -4292,6 +4572,15 @@ body{overflow:auto;padding:0;margin:0;background:var(--bg);font-family:var(--san
     var riskSection = document.getElementById('pv-risk-section');
     if(!risksHtml){ riskSection.classList.add('hidden'); }
     else { riskSection.classList.remove('hidden'); document.getElementById('pv-risks').innerHTML = risksHtml; }
+
+    var imageSection = document.getElementById('pv-image-section');
+    var imageContainer = document.getElementById('pv-image');
+    if(s.imageData){
+      imageSection.classList.remove('hidden');
+      imageContainer.innerHTML = '<img src="'+esc(s.imageData)+'" style="max-width:100%;border-radius:8px;" alt="Step image">';
+    }else{
+      imageSection.classList.add('hidden');
+    }
 
     var idx = steps.findIndex(function(x){ return String(x.id) === String(s.id); });
     document.getElementById('pv-prev').style.display = idx > 0 ? '' : 'none';
@@ -4398,12 +4687,12 @@ body{overflow:auto;padding:0;margin:0;background:var(--bg);font-family:var(--san
   a.download=name.replace(/\s+/g,'-').toLowerCase()+'-rise-flowchart.html';a.click();
 }
 
-function exportOwnershipRise(){
+async function exportOwnershipRise(){
   const owrap=document.querySelector('.owner-wrap');
   if(!owrap||!steps.length){alert('Add steps with owners first.');return;}
   const name=document.getElementById('proc-name').value||'Process Ownership';
   const viewLabel=currentOwnerView==='lens'?'Perspective Lens':'Threaded Journey';
-  const d=gather();
+  const d=await embedImagesForExport(gather());
 
   const clone=owrap.cloneNode(true);
   clone.querySelectorAll('button, .add-raci-btn, .raci-dropdown, .role-selector').forEach(el=>el.remove());
@@ -4480,6 +4769,10 @@ ${clone.outerHTML}
       <div class="popover-label">Responsibility</div>
       <div class="popover-raci" id="pv-raci"></div>
     </div>
+    <div class="popover-section" id="pv-image-section">
+      <div class="popover-label">Image</div>
+      <div id="pv-image"></div>
+    </div>
     <div class="popover-section" id="pv-risk-section">
       <div class="popover-label">Risks & Controls</div>
       <div id="pv-risks"></div>
@@ -4555,6 +4848,15 @@ ${clone.outerHTML}
     if(!risksHtml){ riskSection.classList.add('hidden'); }
     else { riskSection.classList.remove('hidden'); document.getElementById('pv-risks').innerHTML = risksHtml; }
 
+    var imageSection = document.getElementById('pv-image-section');
+    var imageContainer = document.getElementById('pv-image');
+    if(s.imageData){
+      imageSection.classList.remove('hidden');
+      imageContainer.innerHTML = '<img src="'+esc(s.imageData)+'" style="max-width:100%;border-radius:8px;" alt="Step image">';
+    }else{
+      imageSection.classList.add('hidden');
+    }
+
     var idx = steps.findIndex(function(x){ return String(x.id) === String(s.id); });
     document.getElementById('pv-prev').style.display = idx > 0 ? '' : 'none';
     document.getElementById('pv-next').style.display = idx < steps.length-1 ? '' : 'none';
@@ -4627,10 +4929,10 @@ ${clone.outerHTML}
   a.download=name.replace(/\s+/g,'-').toLowerCase()+'-rise-ownership.html';a.click();
 }
 
-function exportRaciRise(){
+async function exportRaciRise(){
   if(!steps.length){alert('Add some steps first.');return;}
   const name=document.getElementById('proc-name').value||'Process';
-  const d=gather();
+  const d=await embedImagesForExport(gather());
   const owners=[...new Set(steps.map(s=>s.owner).filter(Boolean))];
   const sevC={R:'#8a2020',A:'#7a4e10',C:'#1a3060',I:'#4a4945'};
 
@@ -4783,6 +5085,15 @@ th:first-child{text-align:left;}
     var riskSection = document.getElementById('pv-risk-section');
     if(!risksHtml){ riskSection.classList.add('hidden'); }
     else { riskSection.classList.remove('hidden'); document.getElementById('pv-risks').innerHTML = risksHtml; }
+
+    var imageSection = document.getElementById('pv-image-section');
+    var imageContainer = document.getElementById('pv-image');
+    if(s.imageData){
+      imageSection.classList.remove('hidden');
+      imageContainer.innerHTML = '<img src="'+esc(s.imageData)+'" style="max-width:100%;border-radius:8px;" alt="Step image">';
+    }else{
+      imageSection.classList.add('hidden');
+    }
 
     var idx = steps.findIndex(function(x){ return String(x.id) === String(s.id); });
     document.getElementById('pv-prev').style.display = idx > 0 ? '' : 'none';
