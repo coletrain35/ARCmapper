@@ -4163,32 +4163,35 @@ body{overflow:auto;padding:0;margin:0;background:var(--bg);font-family:var(--san
 #canvas-spacer{margin:0 auto;}
 .zoom-controls{position:fixed;bottom:16px;right:16px;z-index:100;}
 .sp-edit-btn,.sp-close{display:none!important;}
-
-.modal-overlay{position:absolute;left:0;width:100%;top:0;height:100vh;background:rgba(26,25,23,0.5);backdrop-filter:blur(3px);z-index:200;display:none;align-items:flex-start;justify-content:center;padding-top:5vh;overflow-y:auto;}
-.modal-overlay.open{display:flex;}
-body.modal-open{overflow:hidden;}
-.modal-card{background:var(--surface);border-radius:16px;width:90vw;max-width:480px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.25);padding:24px;position:relative;margin-bottom:5vh;}
-.modal-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-weight:700;color:var(--ink2);line-height:1;}
-.modal-close:hover{background:var(--bg);color:var(--ink);}
-.modal-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--acc);margin-bottom:4px;}
-.modal-title{font-size:18px;font-weight:800;color:var(--ink);margin-bottom:12px;line-height:1.3;}
-.modal-section{margin-top:16px;}
-.modal-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-muted);margin-bottom:6px;}
-.modal-desc{font-size:14px;color:var(--ink2);line-height:1.7;}
-.modal-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
-.modal-tag{padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:99px;font-size:11px;font-weight:600;color:var(--ink-muted);}
-.modal-raci{display:flex;flex-wrap:wrap;gap:12px;}
-.modal-raci-zone{flex:1;min-width:120px;background:var(--bg);border-radius:8px;padding:12px;}
-.modal-zone-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted);margin-bottom:6px;}
-.modal-zone-name{font-size:13px;font-weight:600;color:var(--ink);padding:3px 0;}
-.modal-risk{background:var(--bg);border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;font-size:13px;}
-.modal-risk-title{font-weight:600;margin-bottom:2px;}
-.modal-risk-mit{font-size:12px;color:var(--ink-muted);}
-.modal-nav{display:flex;gap:8px;margin-top:20px;}
-.modal-nav-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-weight:600;font-size:13px;cursor:pointer;color:var(--ink);}
-.modal-nav-btn:hover{background:var(--bg);border-color:var(--border-strong);}
-.modal-empty{color:var(--ink-muted);font-style:italic;font-size:13px;}
 .node{cursor:pointer!important;}
+
+.popover{position:absolute;z-index:300;display:none;width:380px;max-width:calc(100vw - 16px);background:var(--surface);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1px solid var(--border);font-family:var(--sans);}
+.popover.open{display:block;}
+.popover-arrow{position:absolute;top:-8px;left:50%;margin-left:-8px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:8px solid var(--surface);z-index:1;}
+.popover-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 0;gap:8px;}
+.popover-type{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--acc);}
+.popover-close{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;font-weight:700;color:var(--ink2);flex-shrink:0;}
+.popover-close:hover{background:var(--bg);color:var(--ink);}
+.popover-body{padding:8px 14px 14px;max-height:350px;overflow-y:auto;}
+.popover-title{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:6px;line-height:1.3;}
+.popover-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
+.popover-tag{padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:99px;font-size:10px;font-weight:600;color:var(--ink-muted);}
+.popover-section{margin-top:8px;}
+.popover-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted);margin-bottom:3px;}
+.popover-desc{font-size:13px;color:var(--ink2);line-height:1.6;}
+.popover-raci{display:flex;flex-wrap:wrap;gap:8px;}
+.popover-raci-zone{flex:1;min-width:80px;background:var(--bg);border-radius:6px;padding:8px;}
+.popover-zone-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted);margin-bottom:2px;}
+.popover-zone-name{font-size:12px;font-weight:600;color:var(--ink);padding:2px 0;}
+.popover-risk{background:var(--bg);border-radius:0 6px 6px 0;padding:8px 10px;margin-bottom:6px;font-size:12px;}
+.popover-risk-title{font-weight:600;margin-bottom:1px;}
+.popover-risk-mit{font-size:11px;color:var(--ink-muted);}
+.popover-nav{display:flex;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);}
+.popover-nav-btn{flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-weight:600;font-size:12px;cursor:pointer;color:var(--ink);text-align:center;}
+.popover-nav-btn:hover{background:var(--bg);border-color:var(--border-strong);}
+.popover-empty{color:var(--ink-muted);font-style:italic;font-size:12px;}
+
+.hidden{display:none;}
 </style>
 </head>
 <body>
@@ -4198,27 +4201,30 @@ body.modal-open{overflow:hidden;}
     </div>
   </div>
 
-  <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
-    <div class="modal-card">
-      <button class="modal-close" onclick="closeModal()">&times;</button>
-      <div class="modal-type" id="modal-type"></div>
-      <div class="modal-title" id="modal-title"></div>
-      <div class="modal-tags" id="modal-tags"></div>
-      <div class="modal-section">
-        <div class="modal-label">Instructions</div>
-        <div class="modal-desc" id="modal-desc"></div>
+  <div class="popover" id="popover">
+    <div class="popover-arrow"></div>
+    <div class="popover-bar">
+      <div class="popover-type" id="pv-type"></div>
+      <button class="popover-close" onclick="closePopover()">&times;</button>
+    </div>
+    <div class="popover-body">
+      <div class="popover-title" id="pv-title"></div>
+      <div class="popover-tags" id="pv-tags"></div>
+      <div class="popover-section">
+        <div class="popover-label">Instructions</div>
+        <div class="popover-desc" id="pv-desc"></div>
       </div>
-      <div class="modal-section" id="modal-raci-section">
-        <div class="modal-label">Responsibility</div>
-        <div class="modal-raci" id="modal-raci"></div>
+      <div class="popover-section" id="pv-raci-section">
+        <div class="popover-label">Responsibility</div>
+        <div class="popover-raci" id="pv-raci"></div>
       </div>
-      <div class="modal-section" id="modal-risk-section">
-        <div class="modal-label">Risks & Controls</div>
-        <div id="modal-risks"></div>
+      <div class="popover-section" id="pv-risk-section">
+        <div class="popover-label">Risks & Controls</div>
+        <div id="pv-risks"></div>
       </div>
-      <div class="modal-nav">
-        <button class="modal-nav-btn" id="modal-prev" onclick="navigateDetail(-1)" style="display:none;">← Previous</button>
-        <button class="modal-nav-btn" id="modal-next" onclick="navigateDetail(1)" style="display:none;">Next →</button>
+      <div class="popover-nav">
+        <button class="popover-nav-btn" id="pv-prev" onclick="navigateDetail(-1)">← Previous</button>
+        <button class="popover-nav-btn" id="pv-next" onclick="navigateDetail(1)">Next →</button>
       </div>
     </div>
   </div>
@@ -4237,17 +4243,17 @@ body.modal-open{overflow:hidden;}
     if(!s) return;
     currentStepId = s.id;
 
-    document.getElementById('modal-type').textContent = TL[s.type];
-    document.getElementById('modal-title').textContent = s.name || TL[s.type];
+    document.getElementById('pv-type').textContent = TL[s.type];
+    document.getElementById('pv-title').textContent = s.name || TL[s.type];
 
     var tagsHtml = '';
-    if(s.owner) tagsHtml += '<span class="modal-tag">Owner: '+esc(s.owner)+'</span>';
-    if(s.dur) tagsHtml += '<span class="modal-tag">Est: '+esc(s.dur)+'</span>';
-    (s.tags||[]).forEach(function(t){ tagsHtml += '<span class="modal-tag">'+esc(t)+'</span>'; });
-    document.getElementById('modal-tags').innerHTML = tagsHtml;
+    if(s.owner) tagsHtml += '<span class="popover-tag">Owner: '+esc(s.owner)+'</span>';
+    if(s.dur) tagsHtml += '<span class="popover-tag">Est: '+esc(s.dur)+'</span>';
+    (s.tags||[]).forEach(function(t){ tagsHtml += '<span class="popover-tag">'+esc(t)+'</span>'; });
+    document.getElementById('pv-tags').innerHTML = tagsHtml;
 
-    var descHtml = s.desc ? esc(s.desc).replace(/\\n/g,'<br>') : '<span class="modal-empty">No instructions provided.</span>';
-    document.getElementById('modal-desc').innerHTML = descHtml;
+    var descHtml = s.desc ? esc(s.desc).replace(/\\n/g,'<br>') : '<span class="popover-empty">No instructions provided.</span>';
+    document.getElementById('pv-desc').innerHTML = descHtml;
 
     var raciZones = {R:[],A:[],C:[],I:[]};
     var allOwners = [];
@@ -4262,46 +4268,60 @@ body.modal-open{overflow:hidden;}
     var raciHtml = '';
     ['R','A','C','I'].forEach(function(r){
       if(raciZones[r].length){
-        raciHtml += '<div class="modal-raci-zone"><div class="modal-zone-label">'+labels[r]+'</div>';
-        raciZones[r].forEach(function(o){ raciHtml += '<div class="modal-zone-name">'+esc(o)+'</div>'; });
+        raciHtml += '<div class="popover-raci-zone"><div class="popover-zone-label">'+labels[r]+'</div>';
+        raciZones[r].forEach(function(o){ raciHtml += '<div class="popover-zone-name">'+esc(o)+'</div>'; });
         raciHtml += '</div>';
       }
     });
 
-    var raciSection = document.getElementById('modal-raci-section');
-    if(!raciHtml) raciSection.style.display = 'none';
-    else { raciSection.style.display = ''; document.getElementById('modal-raci').innerHTML = raciHtml; }
+    var raciSection = document.getElementById('pv-raci-section');
+    if(!raciHtml){ raciSection.classList.add('hidden'); }
+    else { raciSection.classList.remove('hidden'); document.getElementById('pv-raci').innerHTML = raciHtml; }
 
     var risksHtml = '';
     (s.stepRisks||[]).forEach(function(r){
       if(r && r.risk){
         var col = r.sev==='H'?'#e24b4a':r.sev==='M'?'#ef9f27':'#38a169';
-        risksHtml += '<div class="modal-risk" style="border-left:4px solid '+col+';">';
-        risksHtml += '<div class="modal-risk-title">'+esc(r.risk)+'</div>';
-        if(r.mit) risksHtml += '<div class="modal-risk-mit">Mitigation: '+esc(r.mit)+'</div>';
+        risksHtml += '<div class="popover-risk" style="border-left:4px solid '+col+';">';
+        risksHtml += '<div class="popover-risk-title">'+esc(r.risk)+'</div>';
+        if(r.mit) risksHtml += '<div class="popover-risk-mit">Mitigation: '+esc(r.mit)+'</div>';
         risksHtml += '</div>';
       }
     });
 
-    var riskSection = document.getElementById('modal-risk-section');
-    if(!risksHtml) riskSection.style.display = 'none';
-    else { riskSection.style.display = ''; document.getElementById('modal-risks').innerHTML = risksHtml; }
+    var riskSection = document.getElementById('pv-risk-section');
+    if(!risksHtml){ riskSection.classList.add('hidden'); }
+    else { riskSection.classList.remove('hidden'); document.getElementById('pv-risks').innerHTML = risksHtml; }
 
     var idx = steps.findIndex(function(x){ return String(x.id) === String(s.id); });
-    document.getElementById('modal-prev').style.display = idx > 0 ? '' : 'none';
-    document.getElementById('modal-next').style.display = idx < steps.length-1 ? '' : 'none';
+    document.getElementById('pv-prev').style.display = idx > 0 ? '' : 'none';
+    document.getElementById('pv-next').style.display = idx < steps.length-1 ? '' : 'none';
 
-    var overlay = document.getElementById('modal-overlay');
-    overlay.style.top = (window.pageYOffset || document.documentElement.scrollTop) + 'px';
-    overlay.style.height = window.innerHeight + 'px';
-    document.body.classList.add('modal-open');
-    overlay.classList.add('open');
-    notifyHeight();
+    showPopover(document.getElementById('node-'+String(id)));
   }
 
-  function closeModal(){
-    document.getElementById('modal-overlay').classList.remove('open');
-    document.body.classList.remove('modal-open');
+  function showPopover(el){
+    var pop = document.getElementById('popover');
+    pop.style.visibility = 'hidden';
+    pop.classList.add('open');
+
+    var rect = el.getBoundingClientRect();
+    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    var pw = pop.offsetWidth;
+
+    var left = rect.left + rect.width/2 - pw/2;
+    if(left < 8) left = 8;
+    if(left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+
+    var top = scrollTop + rect.bottom + 8;
+
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+    pop.style.visibility = 'visible';
+  }
+
+  function closePopover(){
+    document.getElementById('popover').classList.remove('open');
     currentStepId = null;
   }
 
@@ -4312,9 +4332,18 @@ body.modal-open{overflow:hidden;}
     if(next >= 0 && next < steps.length) openDetailPanel(steps[next].id);
   }
 
+  document.addEventListener('click',function(e){
+    var pop = document.getElementById('popover');
+    if(pop.classList.contains('open') && !pop.contains(e.target) && !e.target.closest('.node')){
+      closePopover();
+    }
+  });
+
   document.addEventListener('keydown',function(e){
-    if(e.key==='Escape'){ closeModal(); }
-    if(document.getElementById('modal-overlay').classList.contains('open')){
+    if(e.key==='Escape' && document.getElementById('popover').classList.contains('open')){
+      closePopover();
+    }
+    if(document.getElementById('popover').classList.contains('open')){
       if(e.key==='ArrowLeft') navigateDetail(-1);
       if(e.key==='ArrowRight') navigateDetail(1);
     }
@@ -4378,6 +4407,10 @@ function exportOwnershipRise(){
 
   const clone=owrap.cloneNode(true);
   clone.querySelectorAll('button, .add-raci-btn, .raci-dropdown, .role-selector').forEach(el=>el.remove());
+  clone.querySelectorAll('[onclick*="openDetailPanel"]').forEach(el=>{
+    const m=el.getAttribute('onclick').match(/openDetailPanel\((\d+)\)/);
+    if(m) el.setAttribute('data-step-id',m[1]);
+  });
 
   const styles=document.querySelector('style').innerHTML;
   const html=`<!DOCTYPE html>
@@ -4395,32 +4428,34 @@ h1{font-size:20px;color:#1a3a2a;margin-bottom:4px;}
 .owner-wrap{max-width:100%;box-shadow:none;}
 .top-nav,.save-bar,.flow-toolbar,.side-panel{display:none!important;}
 .sp-edit-btn,.sp-close{display:none!important;}
-.p-node,.p-context,.t-step{cursor:pointer!important;}
 
-.modal-overlay{position:absolute;left:0;width:100%;top:0;height:100vh;background:rgba(26,25,23,0.5);backdrop-filter:blur(3px);z-index:200;display:none;align-items:flex-start;justify-content:center;padding-top:5vh;overflow-y:auto;}
-.modal-overlay.open{display:flex;}
-body.modal-open{overflow:hidden;}
-.modal-card{background:var(--surface);border-radius:16px;width:90vw;max-width:480px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.25);padding:24px;position:relative;margin-bottom:5vh;}
-.modal-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-weight:700;color:var(--ink2);line-height:1;}
-.modal-close:hover{background:var(--bg);color:var(--ink);}
-.modal-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--acc);margin-bottom:4px;}
-.modal-title{font-size:18px;font-weight:800;color:var(--ink);margin-bottom:12px;line-height:1.3;}
-.modal-section{margin-top:16px;}
-.modal-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-muted);margin-bottom:6px;}
-.modal-desc{font-size:14px;color:var(--ink2);line-height:1.7;}
-.modal-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
-.modal-tag{padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:99px;font-size:11px;font-weight:600;color:var(--ink-muted);}
-.modal-raci{display:flex;flex-wrap:wrap;gap:12px;}
-.modal-raci-zone{flex:1;min-width:120px;background:var(--bg);border-radius:8px;padding:12px;}
-.modal-zone-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted);margin-bottom:6px;}
-.modal-zone-name{font-size:13px;font-weight:600;color:var(--ink);padding:3px 0;}
-.modal-risk{background:var(--bg);border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;font-size:13px;}
-.modal-risk-title{font-weight:600;margin-bottom:2px;}
-.modal-risk-mit{font-size:12px;color:var(--ink-muted);}
-.modal-nav{display:flex;gap:8px;margin-top:20px;}
-.modal-nav-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-weight:600;font-size:13px;cursor:pointer;color:var(--ink);}
-.modal-nav-btn:hover{background:var(--bg);border-color:var(--border-strong);}
-.modal-empty{color:var(--ink-muted);font-style:italic;font-size:13px;}
+.popover{position:absolute;z-index:300;display:none;width:380px;max-width:calc(100vw - 16px);background:var(--surface);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1px solid var(--border);font-family:var(--sans);}
+.popover.open{display:block;}
+.popover-arrow{position:absolute;top:-8px;left:50%;margin-left:-8px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:8px solid var(--surface);z-index:1;}
+.popover-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 0;gap:8px;}
+.popover-type{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--acc);}
+.popover-close{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;font-weight:700;color:var(--ink2);flex-shrink:0;}
+.popover-close:hover{background:var(--bg);color:var(--ink);}
+.popover-body{padding:8px 14px 14px;max-height:350px;overflow-y:auto;}
+.popover-title{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:6px;line-height:1.3;}
+.popover-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
+.popover-tag{padding:3px 8px;background:var(--bg);border:1px solid var(--border);border-radius:99px;font-size:10px;font-weight:600;color:var(--ink-muted);}
+.popover-section{margin-top:8px;}
+.popover-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted);margin-bottom:3px;}
+.popover-desc{font-size:13px;color:var(--ink2);line-height:1.6;}
+.popover-raci{display:flex;flex-wrap:wrap;gap:8px;}
+.popover-raci-zone{flex:1;min-width:80px;background:var(--bg);border-radius:6px;padding:8px;}
+.popover-zone-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted);margin-bottom:2px;}
+.popover-zone-name{font-size:12px;font-weight:600;color:var(--ink);padding:2px 0;}
+.popover-risk{background:var(--bg);border-radius:0 6px 6px 0;padding:8px 10px;margin-bottom:6px;font-size:12px;}
+.popover-risk-title{font-weight:600;margin-bottom:1px;}
+.popover-risk-mit{font-size:11px;color:var(--ink-muted);}
+.popover-nav{display:flex;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);}
+.popover-nav-btn{flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-weight:600;font-size:12px;cursor:pointer;color:var(--ink);text-align:center;}
+.popover-nav-btn:hover{background:var(--bg);border-color:var(--border-strong);}
+.popover-empty{color:var(--ink-muted);font-style:italic;font-size:12px;}
+
+.hidden{display:none;}
 </style>
 </head>
 <body>
@@ -4428,27 +4463,30 @@ body.modal-open{overflow:hidden;}
 <p class="sub">Ownership View &middot; ${viewLabel} &middot; ${new Date().toLocaleDateString()}</p>
 ${clone.outerHTML}
 
-<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
-  <div class="modal-card">
-    <button class="modal-close" onclick="closeModal()">&times;</button>
-    <div class="modal-type" id="modal-type"></div>
-    <div class="modal-title" id="modal-title"></div>
-    <div class="modal-tags" id="modal-tags"></div>
-    <div class="modal-section">
-      <div class="modal-label">Instructions</div>
-      <div class="modal-desc" id="modal-desc"></div>
+<div class="popover" id="popover">
+  <div class="popover-arrow"></div>
+  <div class="popover-bar">
+    <div class="popover-type" id="pv-type"></div>
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+  </div>
+  <div class="popover-body">
+    <div class="popover-title" id="pv-title"></div>
+    <div class="popover-tags" id="pv-tags"></div>
+    <div class="popover-section">
+      <div class="popover-label">Instructions</div>
+      <div class="popover-desc" id="pv-desc"></div>
     </div>
-    <div class="modal-section" id="modal-raci-section">
-      <div class="modal-label">Responsibility</div>
-      <div class="modal-raci" id="modal-raci"></div>
+    <div class="popover-section" id="pv-raci-section">
+      <div class="popover-label">Responsibility</div>
+      <div class="popover-raci" id="pv-raci"></div>
     </div>
-    <div class="modal-section" id="modal-risk-section">
-      <div class="modal-label">Risks & Controls</div>
-      <div id="modal-risks"></div>
+    <div class="popover-section" id="pv-risk-section">
+      <div class="popover-label">Risks & Controls</div>
+      <div id="pv-risks"></div>
     </div>
-    <div class="modal-nav">
-      <button class="modal-nav-btn" id="modal-prev" onclick="navigateDetail(-1)" style="display:none;">← Previous</button>
-      <button class="modal-nav-btn" id="modal-next" onclick="navigateDetail(1)" style="display:none;">Next →</button>
+    <div class="popover-nav">
+      <button class="popover-nav-btn" id="pv-prev" onclick="navigateDetail(-1)">← Previous</button>
+      <button class="popover-nav-btn" id="pv-next" onclick="navigateDetail(1)">Next →</button>
     </div>
   </div>
 </div>
@@ -4467,17 +4505,17 @@ ${clone.outerHTML}
     if(!s) return;
     currentStepId = s.id;
 
-    document.getElementById('modal-type').textContent = TL[s.type];
-    document.getElementById('modal-title').textContent = s.name || TL[s.type];
+    document.getElementById('pv-type').textContent = TL[s.type];
+    document.getElementById('pv-title').textContent = s.name || TL[s.type];
 
     var tagsHtml = '';
-    if(s.owner) tagsHtml += '<span class="modal-tag">Owner: '+esc(s.owner)+'</span>';
-    if(s.dur) tagsHtml += '<span class="modal-tag">Est: '+esc(s.dur)+'</span>';
-    (s.tags||[]).forEach(function(t){ tagsHtml += '<span class="modal-tag">'+esc(t)+'</span>'; });
-    document.getElementById('modal-tags').innerHTML = tagsHtml;
+    if(s.owner) tagsHtml += '<span class="popover-tag">Owner: '+esc(s.owner)+'</span>';
+    if(s.dur) tagsHtml += '<span class="popover-tag">Est: '+esc(s.dur)+'</span>';
+    (s.tags||[]).forEach(function(t){ tagsHtml += '<span class="popover-tag">'+esc(t)+'</span>'; });
+    document.getElementById('pv-tags').innerHTML = tagsHtml;
 
-    var descHtml = s.desc ? esc(s.desc).replace(/\\n/g,'<br>') : '<span class="modal-empty">No instructions provided.</span>';
-    document.getElementById('modal-desc').innerHTML = descHtml;
+    var descHtml = s.desc ? esc(s.desc).replace(/\\n/g,'<br>') : '<span class="popover-empty">No instructions provided.</span>';
+    document.getElementById('pv-desc').innerHTML = descHtml;
 
     var raciZones = {R:[],A:[],C:[],I:[]};
     var allOwners = [];
@@ -4492,46 +4530,60 @@ ${clone.outerHTML}
     var raciHtml = '';
     ['R','A','C','I'].forEach(function(r){
       if(raciZones[r].length){
-        raciHtml += '<div class="modal-raci-zone"><div class="modal-zone-label">'+labels[r]+'</div>';
-        raciZones[r].forEach(function(o){ raciHtml += '<div class="modal-zone-name">'+esc(o)+'</div>'; });
+        raciHtml += '<div class="popover-raci-zone"><div class="popover-zone-label">'+labels[r]+'</div>';
+        raciZones[r].forEach(function(o){ raciHtml += '<div class="popover-zone-name">'+esc(o)+'</div>'; });
         raciHtml += '</div>';
       }
     });
 
-    var raciSection = document.getElementById('modal-raci-section');
-    if(!raciHtml) raciSection.style.display = 'none';
-    else { raciSection.style.display = ''; document.getElementById('modal-raci').innerHTML = raciHtml; }
+    var raciSection = document.getElementById('pv-raci-section');
+    if(!raciHtml){ raciSection.classList.add('hidden'); }
+    else { raciSection.classList.remove('hidden'); document.getElementById('pv-raci').innerHTML = raciHtml; }
 
     var risksHtml = '';
     (s.stepRisks||[]).forEach(function(r){
       if(r && r.risk){
         var col = r.sev==='H'?'#e24b4a':r.sev==='M'?'#ef9f27':'#38a169';
-        risksHtml += '<div class="modal-risk" style="border-left:4px solid '+col+';">';
-        risksHtml += '<div class="modal-risk-title">'+esc(r.risk)+'</div>';
-        if(r.mit) risksHtml += '<div class="modal-risk-mit">Mitigation: '+esc(r.mit)+'</div>';
+        risksHtml += '<div class="popover-risk" style="border-left:4px solid '+col+';">';
+        risksHtml += '<div class="popover-risk-title">'+esc(r.risk)+'</div>';
+        if(r.mit) risksHtml += '<div class="popover-risk-mit">Mitigation: '+esc(r.mit)+'</div>';
         risksHtml += '</div>';
       }
     });
 
-    var riskSection = document.getElementById('modal-risk-section');
-    if(!risksHtml) riskSection.style.display = 'none';
-    else { riskSection.style.display = ''; document.getElementById('modal-risks').innerHTML = risksHtml; }
+    var riskSection = document.getElementById('pv-risk-section');
+    if(!risksHtml){ riskSection.classList.add('hidden'); }
+    else { riskSection.classList.remove('hidden'); document.getElementById('pv-risks').innerHTML = risksHtml; }
 
     var idx = steps.findIndex(function(x){ return String(x.id) === String(s.id); });
-    document.getElementById('modal-prev').style.display = idx > 0 ? '' : 'none';
-    document.getElementById('modal-next').style.display = idx < steps.length-1 ? '' : 'none';
+    document.getElementById('pv-prev').style.display = idx > 0 ? '' : 'none';
+    document.getElementById('pv-next').style.display = idx < steps.length-1 ? '' : 'none';
 
-    var overlay = document.getElementById('modal-overlay');
-    overlay.style.top = (window.pageYOffset || document.documentElement.scrollTop) + 'px';
-    overlay.style.height = window.innerHeight + 'px';
-    document.body.classList.add('modal-open');
-    overlay.classList.add('open');
-    notifyHeight();
+    showPopover(document.querySelector('[data-step-id="'+id+'"]') || document.body);
   }
 
-  function closeModal(){
-    document.getElementById('modal-overlay').classList.remove('open');
-    document.body.classList.remove('modal-open');
+  function showPopover(el){
+    var pop = document.getElementById('popover');
+    pop.style.visibility = 'hidden';
+    pop.classList.add('open');
+
+    var rect = el.getBoundingClientRect();
+    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    var pw = pop.offsetWidth;
+
+    var left = rect.left + rect.width/2 - pw/2;
+    if(left < 8) left = 8;
+    if(left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+
+    var top = scrollTop + rect.bottom + 8;
+
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+    pop.style.visibility = 'visible';
+  }
+
+  function closePopover(){
+    document.getElementById('popover').classList.remove('open');
     currentStepId = null;
   }
 
@@ -4542,9 +4594,18 @@ ${clone.outerHTML}
     if(next >= 0 && next < steps.length) openDetailPanel(steps[next].id);
   }
 
+  document.addEventListener('click',function(e){
+    var pop = document.getElementById('popover');
+    if(pop.classList.contains('open') && !pop.contains(e.target) && !e.target.closest('[data-step-id]') && !e.target.closest('[onclick*="openDetailPanel"]')){
+      closePopover();
+    }
+  });
+
   document.addEventListener('keydown',function(e){
-    if(e.key==='Escape'){ closeModal(); }
-    if(document.getElementById('modal-overlay').classList.contains('open')){
+    if(e.key==='Escape' && document.getElementById('popover').classList.contains('open')){
+      closePopover();
+    }
+    if(document.getElementById('popover').classList.contains('open')){
       if(e.key==='ArrowLeft') navigateDetail(-1);
       if(e.key==='ArrowRight') navigateDetail(1);
     }
