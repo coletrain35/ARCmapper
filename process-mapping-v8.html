@@ -4630,23 +4630,25 @@ ${clone.outerHTML}
 function exportRaciRise(){
   if(!steps.length){alert('Add some steps first.');return;}
   const name=document.getElementById('proc-name').value||'Process';
+  const d=gather();
   const owners=[...new Set(steps.map(s=>s.owner).filter(Boolean))];
   const sevC={R:'#8a2020',A:'#7a4e10',C:'#1a3060',I:'#4a4945'};
 
   const rows=steps.map((s,i)=>{
     const key=String(s.id);
     const cells=owners.map(o=>{const v=raciData[key+'__'+o]||'';return '<td style="padding:8px 10px;border:1px solid #e0dfd8;text-align:center;font-weight:600;color:'+(sevC[v]||'#aaa')+';">'+(v||'—')+'</td>';}).join('');
-    return '<tr><td style="padding:8px 10px;border:1px solid #e0dfd8;font-size:11px;color:#888;">'+(i+1)+'</td><td style="padding:8px 10px;border:1px solid #e0dfd8;"><b>'+esc(s.name||TL[s.type])+'</b><br><span style="font-size:11px;color:#888;">'+TL[s.type]+'</span></td>'+cells+'</tr>';
+    return '<tr data-step-id="'+s.id+'" onclick="openDetailPanel('+s.id+')" style="cursor:pointer;transition:background .15s;" onmouseenter="this.style.background=\'#f7f6f3\'" onmouseleave="this.style.background=\'\'"><td style="padding:8px 10px;border:1px solid #e0dfd8;font-size:11px;color:#888;">'+(i+1)+'</td><td style="padding:8px 10px;border:1px solid #e0dfd8;"><b>'+esc(s.name||TL[s.type])+'</b><br><span style="font-size:11px;color:#888;">'+TL[s.type]+'</span></td>'+cells+'</tr>';
   }).join('');
 
   const html=`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(name)} — RACI Matrix</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#faf9f7;padding:20px;color:#1a1917;line-height:1.5;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#faf9f7;padding:20px;color:#1a1917;line-height:1.5;overflow:auto;}
 h1{font-size:20px;color:#1a3a2a;margin-bottom:4px;}
 .sub{font-size:12px;color:#8a8880;margin-bottom:16px;}
 table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
@@ -4654,6 +4656,34 @@ th{padding:8px 10px;background:#f2f0ec;text-align:center;border:1px solid #e0dfd
 th:first-child{text-align:left;}
 .legend{font-size:11px;color:#aaa;}
 .legend b{font-weight:700;}
+
+.popover{position:absolute;z-index:300;display:none;width:380px;max-width:calc(100vw - 16px);background:var(--surface,#fff);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1px solid #e0dfd8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
+.popover.open{display:block;}
+.popover-arrow{position:absolute;top:-8px;left:50%;margin-left:-8px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:8px solid #fff;}
+.popover-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 0;gap:8px;}
+.popover-type{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#c8553d;}
+.popover-close{width:28px;height:28px;border-radius:50%;border:1px solid #e0dfd8;background:#f7f6f3;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;font-weight:700;color:#8a8880;flex-shrink:0;}
+.popover-close:hover{background:#eee;color:#333;}
+.popover-body{padding:8px 14px 14px;max-height:350px;overflow-y:auto;}
+.popover-title{font-size:15px;font-weight:800;color:#1a1917;margin-bottom:6px;line-height:1.3;}
+.popover-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
+.popover-tag{padding:3px 8px;background:#faf9f7;border:1px solid #e0dfd8;border-radius:99px;font-size:10px;font-weight:600;color:#8a8880;}
+.popover-section{margin-top:8px;}
+.popover-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a8880;margin-bottom:3px;}
+.popover-desc{font-size:13px;color:#555;line-height:1.6;}
+.popover-raci{display:flex;flex-wrap:wrap;gap:8px;}
+.popover-raci-zone{flex:1;min-width:80px;background:#faf9f7;border-radius:6px;padding:8px;}
+.popover-zone-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#8a8880;margin-bottom:2px;}
+.popover-zone-name{font-size:12px;font-weight:600;color:#1a1917;padding:2px 0;}
+.popover-risk{background:#faf9f7;border-radius:0 6px 6px 0;padding:8px 10px;margin-bottom:6px;font-size:12px;}
+.popover-risk-title{font-weight:600;margin-bottom:1px;}
+.popover-risk-mit{font-size:11px;color:#8a8880;}
+.popover-nav{display:flex;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid #e0dfd8;}
+.popover-nav-btn{flex:1;padding:6px;border-radius:6px;border:1px solid #e0dfd8;background:#f7f6f3;font-weight:600;font-size:12px;cursor:pointer;color:#333;text-align:center;}
+.popover-nav-btn:hover{background:#eee;border-color:#ccc;}
+.popover-empty{color:#8a8880;font-style:italic;font-size:12px;}
+
+.hidden{display:none;}
 </style>
 </head>
 <body>
@@ -4661,14 +4691,163 @@ th:first-child{text-align:left;}
 <p class="sub">Generated ${new Date().toLocaleDateString()}</p>
 <table><thead><tr><th style="width:40px;">#</th><th>Step</th>${owners.map(o=>'<th>'+esc(o)+'</th>').join('')}</tr></thead><tbody>${rows}</tbody></table>
 <p class="legend"><b>R</b>=Responsible &nbsp;<b>A</b>=Accountable &nbsp;<b>C</b>=Consulted &nbsp;<b>I</b>=Informed</p>
+
+<div class="popover" id="popover">
+  <div class="popover-arrow"></div>
+  <div class="popover-bar">
+    <div class="popover-type" id="pv-type"></div>
+    <button class="popover-close" onclick="closePopover()">&times;</button>
+  </div>
+  <div class="popover-body">
+    <div class="popover-title" id="pv-title"></div>
+    <div class="popover-tags" id="pv-tags"></div>
+    <div class="popover-section">
+      <div class="popover-label">Instructions</div>
+      <div class="popover-desc" id="pv-desc"></div>
+    </div>
+    <div class="popover-section" id="pv-raci-section">
+      <div class="popover-label">Responsibility</div>
+      <div class="popover-raci" id="pv-raci"></div>
+    </div>
+    <div class="popover-section" id="pv-risk-section">
+      <div class="popover-label">Risks & Controls</div>
+      <div id="pv-risks"></div>
+    </div>
+    <div class="popover-nav">
+      <button class="popover-nav-btn" id="pv-prev" onclick="navigateDetail(-1)">← Previous</button>
+      <button class="popover-nav-btn" id="pv-next" onclick="navigateDetail(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
 <script>
-(function(){
-  function notify(){window.parent.postMessage({type:'rise-height',height:document.body.scrollHeight},'*');}
-  window.addEventListener('load',notify);
-  window.addEventListener('resize',notify);
-  new ResizeObserver(notify).observe(document.body);
-  setTimeout(notify,200);
-})();
+  var steps = ${JSON.stringify(d.steps)};
+  var risks = ${JSON.stringify(d.risks)};
+  var raciData = ${JSON.stringify(d.raciData)};
+  var TL = { task:'Task',decision:'Decision',handoff:'Handoff',subprocess:'Subprocess',start:'Start',end:'End' };
+  var currentStepId = null;
+
+  function esc(str){ if(!str)return''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function openDetailPanel(id){
+    var s = steps.find(function(x){ return String(x.id) === String(id); });
+    if(!s) return;
+    currentStepId = s.id;
+
+    document.getElementById('pv-type').textContent = TL[s.type];
+    document.getElementById('pv-title').textContent = s.name || TL[s.type];
+
+    var tagsHtml = '';
+    if(s.owner) tagsHtml += '<span class="popover-tag">Owner: '+esc(s.owner)+'</span>';
+    if(s.dur) tagsHtml += '<span class="popover-tag">Est: '+esc(s.dur)+'</span>';
+    (s.tags||[]).forEach(function(t){ tagsHtml += '<span class="popover-tag">'+esc(t)+'</span>'; });
+    document.getElementById('pv-tags').innerHTML = tagsHtml;
+
+    var descHtml = s.desc ? esc(s.desc).replace(/\\n/g,'<br>') : '<span class="popover-empty">No instructions provided.</span>';
+    document.getElementById('pv-desc').innerHTML = descHtml;
+
+    var raciZones = {R:[],A:[],C:[],I:[]};
+    var allOwners = [];
+    var seen = {};
+    steps.forEach(function(x){ if(x.owner&&!seen[x.owner]){ seen[x.owner]=1; allOwners.push(x.owner); } });
+    allOwners.forEach(function(o){
+      var val = raciData[String(s.id)+'__'+o];
+      if(val && raciZones[val]) raciZones[val].push(o);
+    });
+
+    var labels = {R:'Responsible',A:'Accountable',C:'Consulted',I:'Informed'};
+    var raciHtml = '';
+    ['R','A','C','I'].forEach(function(r){
+      if(raciZones[r].length){
+        raciHtml += '<div class="popover-raci-zone"><div class="popover-zone-label">'+labels[r]+'</div>';
+        raciZones[r].forEach(function(o){ raciHtml += '<div class="popover-zone-name">'+esc(o)+'</div>'; });
+        raciHtml += '</div>';
+      }
+    });
+
+    var raciSection = document.getElementById('pv-raci-section');
+    if(!raciHtml){ raciSection.classList.add('hidden'); }
+    else { raciSection.classList.remove('hidden'); document.getElementById('pv-raci').innerHTML = raciHtml; }
+
+    var risksHtml = '';
+    (s.stepRisks||[]).forEach(function(r){
+      if(r && r.risk){
+        var col = r.sev==='H'?'#e24b4a':r.sev==='M'?'#ef9f27':'#38a169';
+        risksHtml += '<div class="popover-risk" style="border-left:4px solid '+col+';">';
+        risksHtml += '<div class="popover-risk-title">'+esc(r.risk)+'</div>';
+        if(r.mit) risksHtml += '<div class="popover-risk-mit">Mitigation: '+esc(r.mit)+'</div>';
+        risksHtml += '</div>';
+      }
+    });
+
+    var riskSection = document.getElementById('pv-risk-section');
+    if(!risksHtml){ riskSection.classList.add('hidden'); }
+    else { riskSection.classList.remove('hidden'); document.getElementById('pv-risks').innerHTML = risksHtml; }
+
+    var idx = steps.findIndex(function(x){ return String(x.id) === String(s.id); });
+    document.getElementById('pv-prev').style.display = idx > 0 ? '' : 'none';
+    document.getElementById('pv-next').style.display = idx < steps.length-1 ? '' : 'none';
+
+    showPopover(document.querySelector('[data-step-id="'+id+'"]') || document.body);
+  }
+
+  function showPopover(el){
+    var pop = document.getElementById('popover');
+    pop.style.visibility = 'hidden';
+    pop.classList.add('open');
+
+    var rect = el.getBoundingClientRect();
+    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    var pw = pop.offsetWidth;
+
+    var left = rect.left + rect.width/2 - pw/2;
+    if(left < 8) left = 8;
+    if(left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+
+    var top = scrollTop + rect.bottom + 8;
+
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+    pop.style.visibility = 'visible';
+  }
+
+  function closePopover(){
+    document.getElementById('popover').classList.remove('open');
+    currentStepId = null;
+  }
+
+  function navigateDetail(dir){
+    if(!currentStepId) return;
+    var idx = steps.findIndex(function(x){ return String(x.id) === String(currentStepId); });
+    var next = idx + dir;
+    if(next >= 0 && next < steps.length) openDetailPanel(steps[next].id);
+  }
+
+  document.addEventListener('click',function(e){
+    var pop = document.getElementById('popover');
+    if(pop.classList.contains('open') && !pop.contains(e.target) && !e.target.closest('[data-step-id]')){
+      closePopover();
+    }
+  });
+
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape' && document.getElementById('popover').classList.contains('open')){
+      closePopover();
+    }
+    if(document.getElementById('popover').classList.contains('open')){
+      if(e.key==='ArrowLeft') navigateDetail(-1);
+      if(e.key==='ArrowRight') navigateDetail(1);
+    }
+  });
+
+  function notifyHeight(){
+    window.parent.postMessage({type:'rise-height',height:document.body.scrollHeight},'*');
+  }
+  window.addEventListener('load',function(){ notifyHeight(); });
+  window.addEventListener('resize',notifyHeight);
+  new ResizeObserver(notifyHeight).observe(document.body);
+  setTimeout(notifyHeight,300);
+  setTimeout(notifyHeight,800);
 <\/script>
 </body>
 </html>`;
