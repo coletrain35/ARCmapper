@@ -274,6 +274,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .step-card.nested-decision .step-num{background:var(--warn-light)!important;color:var(--warn)!important;border-color:var(--warn);}
 .nested-indicator{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--warn);color:#fff;margin-left:auto;display:flex;align-items:center;gap:6px;}
 .nested-indicator::before{content:'↳';font-size:13px;}
+.unnest-btn{font-family:var(--sans);font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid var(--warn);background:var(--surface);color:var(--warn);cursor:pointer;margin-left:6px;transition:all .15s;}
+.unnest-btn:hover{background:var(--warn);color:#fff;}
 /* Nested preview styling in branch panels */
 .branch-step-preview.nested-preview{border-left-color:var(--warn)!important;background:var(--warn-light)!important;}
 .branch-step-preview.nested-preview:hover{background:var(--surface)!important;}
@@ -1561,14 +1563,18 @@ function addStep(type){
   setTimeout(()=>{const el=document.getElementById('sn-'+id);if(el)el.focus();},40);
 }
 async function removeStep(id){
-  // Clear any branch targets or nextId pointing to this step
+  const toDelete=steps.find(x=>x.id===id);
+  const fwdId=toDelete&&toDelete.nextId?String(toDelete.nextId):'';
+  // Forward references: any nextId or branch targetId pointing to this step
+  // inherits the deleted step's nextId to keep the chain intact
   steps.forEach(s=>{
-    if(s.branches) s.branches.forEach(b=>{if(String(b.targetId)===String(id))b.targetId='';});
-    if(String(s.nextId)===String(id)) s.nextId='';
+    if(s.branches) s.branches.forEach(b=>{if(String(b.targetId)===String(id))b.targetId=fwdId;});
+    if(String(s.nextId)===String(id)) s.nextId=fwdId;
   });
-  const s=steps.find(x=>x.id===id);
-  if(s&&s.hasImage){try{await deleteImage(id);}catch(e){}}
-  steps=steps.filter(s=>s.id!==id);renderSteps();markDirty();
+  if(toDelete&&toDelete.hasImage){try{await deleteImage(id);}catch(e){}}
+  steps=steps.filter(s=>s.id!==id);
+  delete activeBranchTabs[id];
+  renderSteps();markDirty();
 }
 function moveStep(id,dir){
   const i=steps.findIndex(s=>s.id===id);
@@ -1765,6 +1771,16 @@ function upNextId(stepId,val){
   const s=steps.find(x=>x.id===stepId);if(s)s.nextId=val;markDirty();
 }
 
+/* Find and clear the explicit nextId link(s) that pull this step into
+   a branch path, effectively "unnesting" it back to top level. */
+function unnestStep(id){
+  const sid=String(id);
+  const linkers=steps.filter(x=>x.type!=='decision'&&String(x.nextId)===sid);
+  if(!linkers.length){alert('This step is not linked by an explicit next step.');return;}
+  linkers.forEach(x=>{x.nextId='';});
+  renderSteps();markDirty();
+}
+
 /* Refresh only branch dropdowns without rebuilding the whole tree */
 function refreshBranchDropdowns(){
   steps.forEach(s=>{
@@ -1827,6 +1843,8 @@ function renderStepImageSection(s){
 </div>`;
 }
 
+let currentFlowBadgeMap=new Map();
+
 function renderStepCard(s,idx,isNested){
   const tc=TC[s.type];
   const isDecision=s.type==='decision';
@@ -1834,7 +1852,9 @@ function renderStepCard(s,idx,isNested){
   const heat=heatOn?stepHeatLevel(s):'none';
   const heatClass=heat==='high'?' heat-high':heat==='med'?' heat-med':'';
   const nestedClass=(isNested&&isDecision)?' nested-decision':'';
-  const nestedIndicator=(isNested&&isDecision)?`<span class="nested-indicator" title="Decision within branch path">Nested decision</span>`:'';
+  const linkers=isNested&&isDecision?steps.filter(x=>x.type!=='decision'&&String(x.nextId)===String(s.id)):[];
+  const linkerNames=linkers.map(x=>esc(x.name||'Step '+x.id)).join(', ');
+  const nestedIndicator=(isNested&&isDecision)?`<span class="nested-indicator" title="Linked from: ${linkerNames||'branch target'}">Nested decision</span><button class="unnest-btn" onclick="unnestStep(${s.id})" title="Break the next-step link(s) from ${linkerNames||'previous step'} so this decision appears at top level">Unnest</button>`:'';
   const isCompact=shouldShowCompact(s);
   const compactClass=isCompact?' compact':'';
 
@@ -1872,7 +1892,7 @@ function renderStepCard(s,idx,isNested){
   const stepStyle=`--step-color:${tc.nb};`;
   return `<div class="step-card${heatClass}${nestedClass}${compactClass}" id="sc-${s.id}" data-step-id="${s.id}" style="${stepStyle}" ${dragAttrs}${expandOnClick}>
     ${dragHandle}
-    <div class="step-num" style="background:${tc.nb};color:${tc.nf};">${idx+1}</div>
+    <div class="step-num" style="background:${tc.nb};color:${tc.nf};">${currentFlowBadgeMap.get(s.id)||(idx+1)}</div>
     <div class="step-body">
       <div class="step-row1">
         <span class="type-tag ${tc.cls}">${TL[s.type]}</span>
@@ -2294,19 +2314,34 @@ function renderStepsWithBranches(visible,tree,inlinedIds){
 function renderSteps(){
   const tree=document.getElementById('steps-tree');tree.innerHTML='';
   tree.classList.toggle('compact-mode', viewMode==='compact' || steps.length>=15);
+  // Compute flow-order badge numbers once per render
+  currentFlowBadgeMap=new Map();
+  getFlowOrderedSteps().forEach((s,i)=>currentFlowBadgeMap.set(s.id,i+1));
+  // Document tab shows steps in raw array order so drag-and-drop / arrow
+  // buttons visibly reorder cards. RACI/Timeline/Gantt use flow order.
   const visible=activeTagFilter?steps.filter(s=>s.tags&&s.tags.includes(activeTagFilter)):steps;
 
-  // Build a set of step IDs that are part of explicit branch paths
-  // These steps are shown inline under their decision and skipped in the main flow
+  // Build a set of step IDs shown inline under their parent decision.
+  // A step is inlined only if it is EXCLUSIVE to a single branch path —
+  // convergence points (reachable from multiple branches) stay at top level.
   const inlinedIds=new Set();
   steps.forEach(s=>{
     if(s.type==='decision'&&s.branches){
-      s.branches.forEach(b=>{
-        if(b.targetId){
-          // Use explicit-only path collection to prevent sequential steps
-          // from being incorrectly pulled into branch lanes
-          collectBranchPath(String(b.targetId),new Set([String(s.id)])).forEach(id=>inlinedIds.add(id));
-        }
+      // Collect full explicit paths for each branch
+      const branchPaths=s.branches.map(b=>{
+        if(!b.targetId) return [];
+        return collectBranchPath(String(b.targetId),new Set([String(s.id)]));
+      });
+      // Count how many branch paths each step appears in
+      const pathCounts={};
+      branchPaths.forEach(path=>{
+        path.forEach(id=>{pathCounts[id]=(pathCounts[id]||0)+1;});
+      });
+      // Only inline steps exclusive to a single branch
+      branchPaths.forEach(path=>{
+        path.forEach(id=>{
+          if(pathCounts[id]===1) inlinedIds.add(id);
+        });
       });
     }
   });
@@ -2430,7 +2465,7 @@ function renderRaci(){
   if(!steps.length){thead.innerHTML='';tbody.innerHTML='<tr><td colspan="99" style="padding:20px;font-size:13px;color:var(--ink3);text-align:center;">Add steps with owners in the Document tab to generate the RACI matrix.</td></tr>';return;}
   const colOwners=owners.length?owners:['(no owners set)'];
   thead.innerHTML=`<tr><th style="min-width:180px;">Step</th>${colOwners.map(o=>`<th>${esc(o)}</th>`).join('')}</tr>`;
-  tbody.innerHTML=steps.map(s=>{
+  tbody.innerHTML=getFlowOrderedSteps().map(s=>{
     const key=`${s.id}`;
     if(!raciData[key]) raciData[key]={};
     const cells=colOwners.map(o=>{
@@ -2457,7 +2492,7 @@ function setRaci(key,sel){
 function exportRaciCSV(){
   const owners=[...new Set(steps.map(s=>s.owner).filter(Boolean))];
   let csv='Step,Type,'+owners.map(o=>JSON.stringify(o)).join(',')+'\n';
-  steps.forEach(s=>{
+  getFlowOrderedSteps().forEach(s=>{
     const key=String(s.id);
     csv+=`${JSON.stringify(s.name||TL[s.type])},${s.type},${owners.map(o=>{return raciData[`${key}__${o}`]||'';}).join(',')}\n`;
   });
@@ -2468,7 +2503,7 @@ function exportRaciPDF(){
   const owners=[...new Set(steps.map(s=>s.owner).filter(Boolean))];
   const name=document.getElementById('proc-name').value||'Process';
   const sevC={R:'#8a2020',A:'#7a4e10',C:'#1a3060',I:'#4a4945'};
-  const rows=steps.map(s=>{
+  const rows=getFlowOrderedSteps().map(s=>{
     const key=String(s.id);
     const cells=owners.map(o=>{const v=raciData[`${key}__${o}`]||'';return `<td style="padding:8px 10px;border:1px solid #e0dfd8;text-align:center;font-weight:600;color:${sevC[v]||'#aaa'};">${v||'—'}</td>`;}).join('');
     return `<tr><td style="padding:8px 10px;border:1px solid #e0dfd8;"><b>${esc(s.name||TL[s.type])}</b><br><span style="font-size:11px;color:#888;">${TL[s.type]}</span></td>${cells}</tr>`;
@@ -2502,13 +2537,14 @@ function fmtDur(mins){
 }
 function renderGantt(){
   const cont=document.getElementById('gantt-content');
-  const hasDur=steps.some(s=>s.dur&&parseDur(s.dur)>0);
-  if(!steps.length){cont.innerHTML='<div class="gantt-empty">Add steps in the Document tab to see the timeline.</div>';return;}
-  const durations=steps.map(s=>parseDur(s.dur));
+  const ordered=getFlowOrderedSteps();
+  const hasDur=ordered.some(s=>s.dur&&parseDur(s.dur)>0);
+  if(!ordered.length){cont.innerHTML='<div class="gantt-empty">Add steps in the Document tab to see the timeline.</div>';return;}
+  const durations=ordered.map(s=>parseDur(s.dur));
   const total=durations.reduce((a,b)=>a+b,0);
   const barColors={task:'#185fa5',decision:'#854f0b',handoff:'#5f5e5a',start:'#3a7a54',end:'#8a2020',subprocess:'#534ab7'};
   let cumulative=0;
-  const rows=steps.map((s,i)=>{
+  const rows=ordered.map((s,i)=>{
     const dur=durations[i];
     const pct=total>0?(dur/total*100):0;
     const leftPct=total>0?(cumulative/total*100):0;
@@ -2536,9 +2572,26 @@ function renderGantt(){
    FLOWCHART ENGINE (column-aware tree-walk layout)
    ══════════════════════════════════════════ */
 
-/* Build adjacency list, but only from INTENTIONAL connections.
-   Steps that are already targeted by a branch/nextId don't get auto-linked
-   from the previous step in the array. */
+// Return steps in flowchart traversal order (DFS following edges from root)
+function getFlowOrderedSteps(){
+  if(!steps.length) return [];
+  const adj=buildGraph();
+  const visited=new Set();
+  const ordered=[];
+  function walk(sid){
+    sid=String(sid);
+    if(visited.has(sid)) return;
+    visited.add(sid);
+    const s=steps.find(x=>String(x.id)===sid);
+    if(s) ordered.push(s);
+    (adj[sid]||[]).forEach(cid=>walk(cid));
+  }
+  walk(steps[0].id);
+  // Append any unreachable steps (orphans, etc.)
+  steps.forEach(s=>{if(!visited.has(String(s.id))) ordered.push(s);});
+  return ordered;
+}
+
 function buildGraph(){
   // First pass: find all steps that are explicitly targeted
   const claimed=new Set();
@@ -2549,6 +2602,14 @@ function buildGraph(){
     if(s.nextId) claimed.add(String(s.nextId));
   });
   
+  // Count explicit parents for convergence detection
+  const explicitParentCount={};
+  steps.forEach(s=>{explicitParentCount[String(s.id)]=0;});
+  steps.forEach(s=>{
+    if(s.type==='decision'&&s.branches) s.branches.forEach(b=>{if(b.targetId)explicitParentCount[String(b.targetId)]=(explicitParentCount[String(b.targetId)]||0)+1;});
+    if(s.nextId) explicitParentCount[String(s.nextId)]=(explicitParentCount[String(s.nextId)]||0)+1;
+  });
+
   const adj={};
   steps.forEach(s=>{
     adj[s.id]=[];
@@ -2560,11 +2621,22 @@ function buildGraph(){
       // Explicit nextId override
       adj[s.id].push(String(s.nextId));
     } else if(idx<steps.length-1){
-      // Default: next in array — BUT only if the next step isn't already
-      // claimed as a branch target by some decision
-      const nextId=String(steps[idx+1].id);
-      if(!claimed.has(nextId)){
-        adj[s.id].push(nextId);
+      // Default: next in array. For convergence points (multiple explicit
+      // parents), skip past claimed steps to find the true continuation.
+      // For leaves (single parent), use the original next-step-only check.
+      const pc=explicitParentCount[String(s.id)]||0;
+      if(pc>=2){
+        // Convergence — skip claimed siblings to find next unclaimed step
+        let ni=idx+1;
+        while(ni<steps.length){
+          const nid=String(steps[ni].id);
+          if(!claimed.has(nid)){adj[s.id].push(nid);break;}
+          ni++;
+        }
+      } else {
+        // Root or leaf — only check immediate next step
+        const nextId=String(steps[idx+1].id);
+        if(!claimed.has(nextId)) adj[s.id].push(nextId);
       }
     }
   });
@@ -2695,7 +2767,7 @@ function layoutGraph(){
       });
 
       const total=parentCount[sid]||0;
-      const ready=parentPos.length>=total||(parentPos.length>0&&passes>10);
+      const ready=total>0&&(parentPos.length>=total||(parentPos.length>0&&passes>10));
       if(ready){
         const deepRow=Math.max(...parentPos.map(pp=>pp.row));
         const avgCol=parentPos.reduce((sm,pp)=>sm+pp.col,0)/parentPos.length;
@@ -3166,7 +3238,12 @@ function buildExportHTML(d){
   const sevC={H:'#8a2020',M:'#7a4e10',L:'#1a3a2a'};const sevL={H:'High',M:'Medium',L:'Low'};
   const owners=[...new Set((d.steps||[]).map(s=>s.owner).filter(Boolean))];
 
-  const stHtml=(d.steps||[]).map((s,i)=>{
+  // Order steps by flow graph for export display
+  const flowOrdered=getFlowOrderedSteps();
+  const flowMap=new Map(flowOrdered.map((s,i)=>[s.id,i]));
+  const ordSteps=(d.steps||[]).slice().sort((a,b)=>(flowMap.get(a.id)??9999)-(flowMap.get(b.id)??9999));
+
+  const stHtml=ordSteps.map((s,i)=>{
     const tc={task:{bg:'#e8eef8',fg:'#1a3060'},decision:{bg:'#faf0e0',fg:'#7a4e10'},handoff:{bg:'#eeecea',fg:'#4a4945'},start:{bg:'#e8f2ec',fg:'#1a3a2a'},end:{bg:'#f7eaea',fg:'#8a2020'},subprocess:{bg:'#eeedfe',fg:'#3c3489'}}[s.type]||{bg:'#f0eee8',fg:'#333'};
     const tagHtml=s.tags&&s.tags.length?`<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;">${s.tags.map(t=>`<span style="font-size:10px;padding:1px 7px;border-radius:99px;background:#e5e2dc;color:#4a4945;">${esc(t)}</span>`).join('')}</div>`:'';
     const srHtml=s.stepRisks&&s.stepRisks.length?`<div style="margin-top:7px;padding-top:7px;border-top:1px solid #f0eee8;"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#c04040;margin-bottom:4px;">Step risks</div>${s.stepRisks.map(r=>`<div style="font-size:12px;color:#4a4945;padding:2px 0;">${esc(r.risk)} — <span style="font-weight:600;color:${sevC[r.sev]||'#333'};">${sevL[r.sev]||r.sev}</span>${r.mit?` — <span style="color:#8a8880;">${esc(r.mit)}</span>`:''}</div>`).join('')}</div>`:'';
@@ -3175,7 +3252,7 @@ function buildExportHTML(d){
 
   const rHtml=d.risks&&d.risks.length?`<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f7f6f3;"><th style="padding:7px 9px;border:1px solid #e0dfd8;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:#888;">Risk</th><th style="padding:7px 9px;border:1px solid #e0dfd8;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:#888;width:78px;">Severity</th><th style="padding:7px 9px;border:1px solid #e0dfd8;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:#888;">Mitigation</th></tr></thead><tbody>${d.risks.map(r=>`<tr><td style="padding:7px 9px;border:1px solid #e0dfd8;">${esc(r.risk)}</td><td style="padding:7px 9px;border:1px solid #e0dfd8;font-weight:600;color:${sevC[r.sev]||'#333'};">${sevL[r.sev]||r.sev}</td><td style="padding:7px 9px;border:1px solid #e0dfd8;">${esc(r.mit)}</td></tr>`).join('')}</tbody></table>`:'';
 
-  const raciHtml=owners.length&&d.steps&&d.steps.length?`<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;"><thead><tr style="background:#f7f6f3;"><th style="padding:7px 9px;border:1px solid #e0dfd8;text-align:left;font-size:9px;text-transform:uppercase;color:#888;">Step</th>${owners.map(o=>`<th style="padding:7px 9px;border:1px solid #e0dfd8;text-align:center;font-size:9px;text-transform:uppercase;color:#888;">${esc(o)}</th>`).join('')}</tr></thead><tbody>${d.steps.map(s=>{const key=String(s.id);const cells=owners.map(o=>{const v=(d.raciData||{})[`${key}__${o}`]||'';const c=v==='R'?'#8a2020':v==='A'?'#7a4e10':v==='C'?'#1a3060':v==='I'?'#4a4945':'#bbb';return `<td style="padding:7px 9px;border:1px solid #e0dfd8;text-align:center;font-weight:600;color:${c};">${v||'—'}</td>`;}).join('');return `<tr><td style="padding:7px 9px;border:1px solid #e0dfd8;font-weight:500;">${esc(s.name||TL[s.type])}</td>${cells}</tr>`;}).join('')}</tbody></table>`:'';
+  const raciHtml=owners.length&&d.steps&&d.steps.length?`<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;"><thead><tr style="background:#f7f6f3;"><th style="padding:7px 9px;border:1px solid #e0dfd8;text-align:left;font-size:9px;text-transform:uppercase;color:#888;">Step</th>${owners.map(o=>`<th style="padding:7px 9px;border:1px solid #e0dfd8;text-align:center;font-size:9px;text-transform:uppercase;color:#888;">${esc(o)}</th>`).join('')}</tr></thead><tbody>${ordSteps.map(s=>{const key=String(s.id);const cells=owners.map(o=>{const v=(d.raciData||{})[`${key}__${o}`]||'';const c=v==='R'?'#8a2020':v==='A'?'#7a4e10':v==='C'?'#1a3060':v==='I'?'#4a4945':'#bbb';return `<td style="padding:7px 9px;border:1px solid #e0dfd8;text-align:center;font-weight:600;color:${c};">${v||'—'}</td>`;}).join('');return `<tr><td style="padding:7px 9px;border:1px solid #e0dfd8;font-weight:500;">${esc(s.name||TL[s.type])}</td>${cells}</tr>`;}).join('')}</tbody></table>`:'';
 
   const checksDone=(d.checks||[]).map((v,i)=>({label:CHECKS[i],done:v}));
   const sections=[];
@@ -3701,6 +3778,7 @@ function renderInteractiveCanvas(){
       const tp=pos[tid];if(!tp)return;
       
       let color='var(--border-strong)';
+      let dashed='';
       let lbl='';
       if(s.type==='decision'&&s.branches){
         const b=s.branches.find(x=>String(x.targetId)===tid);
@@ -3708,7 +3786,11 @@ function renderInteractiveCanvas(){
           const bi=s.branches.indexOf(b);
           color=BRANCH_COLORS[bi]||BRANCH_COLORS[BRANCH_COLORS.length-1];
           lbl=b.label;
+          dashed='stroke-dasharray="5 3"';
         }
+      } else if(s.nextId&&String(s.nextId)===tid){
+        color='#534ab7';
+        dashed='stroke-dasharray="4 4"';
       }
       
       const x1=p.x+p.w/2, y1=p.y+p.h;
@@ -3720,7 +3802,7 @@ function renderInteractiveCanvas(){
       const cp1y = y1 + distY * offset;
       const cp2y = y2 - distY * offset;
       
-      svg += `<path class="edge edge-${s.id}-${tid} anim-draw" data-from="${s.id}" data-to="${tid}" d="M${x1},${y1} C${x1},${cp1y} ${x2},${cp2y} ${x2},${y2}" stroke="${color}" marker-end="url(#arr)"/>`;
+      svg += `<path class="edge edge-${s.id}-${tid} anim-draw" data-from="${s.id}" data-to="${tid}" d="M${x1},${y1} C${x1},${cp1y} ${x2},${cp2y} ${x2},${y2}" stroke="${color}" stroke-width="1.5" ${dashed} marker-end="url(#arr)"/>`;
       
       if(lbl){
         branchLabels.push({x:(x1+x2)/2, y:(y1+y2)/2 - 14, text:lbl, color:color});
@@ -4286,7 +4368,7 @@ function renderRaciTimeline() {
   
   let html = `<div class="tl-spine"></div>`;
   
-  steps.forEach((s, idx) => {
+  getFlowOrderedSteps().forEach((s, idx) => {
     html += `<div class="tl-card">
                <div class="tl-num">${idx+1}</div>
                <div class="tl-header">
