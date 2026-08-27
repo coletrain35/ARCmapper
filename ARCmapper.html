@@ -288,9 +288,24 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .cbtn{background:none;border:2px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-muted);transition:all .2s;}
 .cbtn:hover{background:var(--bg);border-color:var(--border-strong);color:var(--ink);}
 .cbtn:disabled{opacity:.4;cursor:default;border-color:var(--border);}
-.step-seq-conn{display:flex;align-items:center;justify-content:center;height:24px;position:relative;margin:8px 0 8px 22px;}
+
+/* Step Insert Divider */
+.step-insert-divider{display:flex;align-items:center;justify-content:center;position:relative;height:24px;margin:6px 0;transition:all .2s;opacity:0.4;}
+.step-insert-divider:hover{opacity:1;height:32px;margin:10px 0;}
+.step-insert-line{position:absolute;left:0;right:0;height:2px;background:var(--border);z-index:1;transition:background .2s;}
+.step-insert-divider:hover .step-insert-line{background:var(--acc);}
+.step-insert-btn-group{position:relative;z-index:2;display:flex;align-items:center;gap:4px;background:var(--surface);padding:3px 10px;border-radius:20px;border:1px solid var(--border);box-shadow:var(--shadow-sm);transition:all .2s;}
+.step-insert-divider:hover .step-insert-btn-group{border-color:var(--acc);box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.step-insert-main-btn{background:transparent;border:none;font-family:var(--sans);font-size:12px;font-weight:600;color:var(--ink2);cursor:pointer;display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:12px;transition:all .15s;}
+.step-insert-main-btn:hover{background:var(--acc);color:#fff;}
+.step-insert-types{display:none;align-items:center;gap:2px;padding-left:6px;border-left:1px solid var(--border);}
+.step-insert-divider:hover .step-insert-types{display:flex;}
+.step-insert-type-btn{background:transparent;border:none;font-family:var(--sans);font-size:11px;font-weight:600;color:var(--ink3);cursor:pointer;padding:2px 6px;border-radius:8px;transition:all .15s;}
+.step-insert-type-btn:hover{background:var(--acc-light);color:var(--acc);}
+
+.step-seq-conn{display:flex;align-items:center;justify-content:center;height:20px;position:relative;margin:4px 0 4px 22px;}
 .step-seq-conn::before{content:'';position:absolute;left:0;width:2px;height:100%;background:var(--border-strong);border-radius:1px;}
-.step-seq-conn span{position:relative;z-index:1;background:var(--bg);padding:0 8px;font-size:14px;color:var(--ink-muted);}
+.step-seq-conn span{position:relative;z-index:1;background:var(--bg);padding:0 8px;font-size:12px;color:var(--ink-muted);}
 .step-add-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px;align-items:center;padding-top:20px;border-top:2px dashed var(--border);}
 .sadd-btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:10px 18px;border-radius:var(--radius-sm);cursor:pointer;background:var(--surface);border:2px solid var(--border);color:var(--ink);transition:all .2s;}
 .sadd-btn:hover{background:var(--acc-light);border-color:var(--acc);color:var(--acc);transform:translateY(-1px);box-shadow:var(--shadow-sm);}
@@ -539,12 +554,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .compact-branch-pill{display:inline-flex;align-items:center;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;}
 
 /* Drag-and-drop reordering */
-.step-card.compact .drag-handle{display:flex;align-items:center;justify-content:center;width:20px;cursor:grab;color:var(--ink3);font-size:14px;letter-spacing:1px;user-select:none;opacity:0.4;transition:opacity .15s;flex-shrink:0;margin-right:4px;}
-.step-card.compact .drag-handle:hover{opacity:0.8;color:var(--acc);}
-.step-card.compact .drag-handle:active{cursor:grabbing;}
-.step-card.compact.dragging{opacity:0.4;border-style:dashed;}
-.step-card.compact.drag-over-above{box-shadow:0 -3px 0 0 var(--acc) !important;}
-.step-card.compact.drag-over-below{box-shadow:0 3px 0 0 var(--acc) !important;}
+.drag-handle{display:flex;align-items:center;justify-content:center;width:20px;cursor:grab;color:var(--ink3);font-size:16px;letter-spacing:1px;user-select:none;opacity:0.35;transition:opacity .15s, color .15s;flex-shrink:0;margin-right:2px;align-self:center;}
+.drag-handle:hover{opacity:0.9;color:var(--acc);}
+.drag-handle:active{cursor:grabbing;}
+.step-card.dragging{opacity:0.35;border-style:dashed !important;}
+.step-card.drag-over-above{box-shadow:0 -3px 0 0 var(--acc) !important;border-top-color:var(--acc) !important;}
+.step-card.drag-over-below{box-shadow:0 3px 0 0 var(--acc) !important;border-bottom-color:var(--acc) !important;}
 
 /* Collapse button for expanded cards */
 .collapse-btn{width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--ink);font-size:16px;font-weight:700;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-left:8px;}
@@ -1555,40 +1570,176 @@ function addScope(w){addScopeItem(w,'');markDirty();const inputs=document.queryS
 // Branch color palette for multi-path decisions (up to 5 branches)
 const BRANCH_COLORS=['#3a7a54','#8a2020','#185fa5','#854f0b','#534ab7'];
 
+function getInlinedStepIds(){
+  const inlinedIds=new Set();
+  steps.forEach(s=>{
+    if(s.type==='decision'&&s.branches){
+      const branchPaths=s.branches.map(b=>{
+        if(!b.targetId) return [];
+        return collectBranchPath(String(b.targetId),new Set([String(s.id)]));
+      });
+      const pathCounts={};
+      branchPaths.forEach(path=>{
+        path.forEach(pid=>{pathCounts[pid]=(pathCounts[pid]||0)+1;});
+      });
+      branchPaths.forEach(path=>{
+        path.forEach(pid=>{
+          if(pathCounts[pid]===1) inlinedIds.add(pid);
+        });
+      });
+    }
+  });
+  return inlinedIds;
+}
+
+function getStepBlock(stepId,inlinedIds){
+  const s=steps.find(x=>x.id===stepId);
+  if(!s) return [];
+  if(inlinedIds&&inlinedIds.has(String(stepId))) return [s];
+  const block=[s];
+  if(s.type==='decision'&&s.branches){
+    const branchPaths=s.branches.map(b=>b.targetId?collectBranchPath(String(b.targetId),new Set([String(s.id)])):[]);
+    const pathCounts={};
+    branchPaths.forEach(p=>p.forEach(id=>{pathCounts[id]=(pathCounts[id]||0)+1;}));
+    const exclusiveIds=new Set();
+    branchPaths.forEach(p=>p.forEach(id=>{if(pathCounts[id]===1)exclusiveIds.add(id);}));
+    steps.forEach(st=>{
+      if(st.id!==s.id&&exclusiveIds.has(String(st.id))){
+        block.push(st);
+      }
+    });
+  }
+  return block;
+}
+
 function addStep(type){
   const id=++sId;
   const defaultBranches=type==='decision'?[{label:'Yes',targetId:''},{label:'No',targetId:''}]:[];
-  steps.push({id,type,name:'',desc:'',owner:'',dur:'',branches:defaultBranches,nextId:'',subprocId:'',stepRisks:[],tags:[]});
-  renderSteps();markDirty();
-  setTimeout(()=>{const el=document.getElementById('sn-'+id);if(el)el.focus();},40);
+  steps.push({id,type:type||'task',name:'',desc:'',owner:'',dur:'',branches:defaultBranches,nextId:'',subprocId:'',stepRisks:[],tags:[],hasImage:false});
+  renderSteps();renderTagFilter();markDirty();
+  setTimeout(()=>{const el=document.getElementById('sn-'+id);if(el)el.focus();},50);
 }
+
+function insertStepAfter(afterId,type){
+  const id=++sId;
+  const defaultBranches=type==='decision'?[{label:'Yes',targetId:''},{label:'No',targetId:''}]:[];
+  const newStep={id,type:type||'task',name:'',desc:'',owner:'',dur:'',branches:defaultBranches,nextId:'',subprocId:'',stepRisks:[],tags:[],hasImage:false};
+
+  if(!afterId){
+    steps.unshift(newStep);
+  } else {
+    const afterStep=steps.find(s=>s.id===afterId);
+    if(afterStep){
+      const inlinedIds=getInlinedStepIds();
+      const block=getStepBlock(afterStep.id,inlinedIds);
+      const lastInBlock=block[block.length-1];
+      const insertIdx=steps.findIndex(s=>s.id===lastInBlock.id);
+      if(insertIdx>=0){
+        steps.splice(insertIdx+1,0,newStep);
+      } else {
+        steps.push(newStep);
+      }
+      if(afterStep.type!=='decision'&&afterStep.nextId){
+        newStep.nextId=String(afterStep.nextId);
+        afterStep.nextId=String(id);
+      }
+    } else {
+      steps.push(newStep);
+    }
+  }
+
+  renderSteps();renderTagFilter();markDirty();
+  setTimeout(()=>{
+    const el=document.getElementById('sn-'+id);
+    if(el){
+      el.focus();
+      el.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+  },60);
+}
+
+function renderInsertDivider(afterId){
+  const sid=afterId||0;
+  return `<div class="step-insert-divider" data-after-id="${sid}">
+    <div class="step-insert-line"></div>
+    <div class="step-insert-btn-group">
+      <button class="step-insert-main-btn" onclick="insertStepAfter(${sid},'task')" title="Insert task here">
+        <span>+</span><span>Insert step</span>
+      </button>
+      <div class="step-insert-types">
+        <button class="step-insert-type-btn" onclick="insertStepAfter(${sid},'task')">Task</button>
+        <button class="step-insert-type-btn" onclick="insertStepAfter(${sid},'decision')">Decision</button>
+        <button class="step-insert-type-btn" onclick="insertStepAfter(${sid},'handoff')">Handoff</button>
+        <button class="step-insert-type-btn" onclick="insertStepAfter(${sid},'subprocess')">Subproc</button>
+        <button class="step-insert-type-btn" onclick="insertStepAfter(${sid},'start')">Start</button>
+        <button class="step-insert-type-btn" onclick="insertStepAfter(${sid},'end')">End</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 async function removeStep(id){
   const toDelete=steps.find(x=>x.id===id);
+  if(!toDelete) return;
+
+  if(toDelete.type==='decision'&&toDelete.branches&&toDelete.branches.some(b=>b.targetId)){
+    const branchStepCount=toDelete.branches.reduce((acc,b)=>{
+      if(!b.targetId) return acc;
+      return acc+collectBranchSteps(String(b.targetId),new Set([String(id)])).length;
+    },0);
+    if(branchStepCount>0){
+      const confirmMsg=`This decision has ${branchStepCount} step(s) in its branch paths.\n\nDelete this decision? (Branch steps will be released to the workflow)`;
+      if(!confirm(confirmMsg)) return;
+    }
+  }
+
   const fwdId=toDelete&&toDelete.nextId?String(toDelete.nextId):'';
-  // Forward references: any nextId or branch targetId pointing to this step
-  // inherits the deleted step's nextId to keep the chain intact
   steps.forEach(s=>{
     if(s.branches) s.branches.forEach(b=>{if(String(b.targetId)===String(id))b.targetId=fwdId;});
     if(String(s.nextId)===String(id)) s.nextId=fwdId;
   });
+
+  Object.keys(raciData).forEach(k=>{
+    if(k.startsWith(id+'__')||k.endsWith('__'+id)) delete raciData[k];
+  });
+
   if(toDelete&&toDelete.hasImage){try{await deleteImage(id);}catch(e){}}
   steps=steps.filter(s=>s.id!==id);
   delete activeBranchTabs[id];
-  renderSteps();markDirty();
-}
-function moveStep(id,dir){
-  const i=steps.findIndex(s=>s.id===id);
-  if(dir===-1&&i===0||dir===1&&i===steps.length-1)return;
-  [steps[i],steps[i+dir]]=[steps[i+dir],steps[i]];renderSteps();markDirty();
+  renderSteps();renderTagFilter();markDirty();
 }
 
-/* ── DRAG-AND-DROP REORDER (compact mode) ── */
+function moveStep(id,dir){
+  const inlinedIds=getInlinedStepIds();
+  
+  if(inlinedIds.has(String(id))){
+    const i=steps.findIndex(s=>s.id===id);
+    if(i<0) return;
+    const targetIdx=i+dir;
+    if(targetIdx<0||targetIdx>=steps.length) return;
+    [steps[i],steps[targetIdx]]=[steps[targetIdx],steps[i]];
+    renderSteps();markDirty();
+    return;
+  }
+
+  const topSteps=steps.filter(s=>!inlinedIds.has(String(s.id)));
+  const curIdx=topSteps.findIndex(s=>s.id===id);
+  if(curIdx<0) return;
+  const targetIdx=curIdx+dir;
+  if(targetIdx<0||targetIdx>=topSteps.length) return;
+
+  const blocks=topSteps.map(ts=>getStepBlock(ts.id,inlinedIds));
+  [blocks[curIdx],blocks[targetIdx]]=[blocks[targetIdx],blocks[curIdx]];
+  steps=blocks.flat();
+  renderSteps();markDirty();
+}
+
+/* ── DRAG-AND-DROP REORDER ── */
 let dragStepId=null;
 function onStepDragStart(e,id){
   dragStepId=id;
   e.dataTransfer.effectAllowed='move';
-  e.dataTransfer.setData('text/plain',id);
-  // Delay adding class so the drag image renders correctly
+  e.dataTransfer.setData('text/plain',String(id));
   setTimeout(()=>{const el=document.getElementById('sc-'+id);if(el)el.classList.add('dragging');},0);
 }
 function onStepDragEnd(e){
@@ -1610,21 +1761,39 @@ function onStepDragLeave(e){
 }
 function onStepDrop(e,targetId){
   e.preventDefault();
-  e.currentTarget.classList.remove('drag-over-above','drag-over-below');
-  if(dragStepId===null||dragStepId===targetId) return;
-  const fromIdx=steps.findIndex(s=>s.id===dragStepId);
+  document.querySelectorAll(".step-card").forEach(el=>{el.classList.remove("dragging","drag-over-above","drag-over-below");});
+  if(dragStepId===null||String(dragStepId)===String(targetId)) return;
+
+  const inlinedIds=getInlinedStepIds();
+  const isDragTop=!inlinedIds.has(String(dragStepId));
+  const isTargetTop=!inlinedIds.has(String(targetId));
+
   const toCard=e.currentTarget;
   const rect=toCard.getBoundingClientRect();
-  const dropAbove=e.clientY<rect.top+rect.height/2;
-  let toIdx=steps.findIndex(s=>s.id===targetId);
-  if(fromIdx<0||toIdx<0) return;
-  // Remove from old position
-  const [moved]=steps.splice(fromIdx,1);
-  // Recalculate target index after removal
-  toIdx=steps.findIndex(s=>s.id===targetId);
-  if(toIdx<0) toIdx=steps.length;
-  // Insert above or below target
-  steps.splice(dropAbove?toIdx:toIdx+1, 0, moved);
+  const dropAbove=e.clientY<(rect.top+rect.height/2);
+
+  if(isDragTop&&isTargetTop){
+    const topSteps=steps.filter(s=>!inlinedIds.has(String(s.id)));
+    const fromIdx=topSteps.findIndex(s=>s.id===dragStepId);
+    if(fromIdx<0) return;
+
+    const blocks=topSteps.map(ts=>getStepBlock(ts.id,inlinedIds));
+    const [movedBlock]=blocks.splice(fromIdx,1);
+    
+    let toIdx=topSteps.filter(s=>s.id!==dragStepId).findIndex(s=>s.id===targetId);
+    if(toIdx<0) toIdx=blocks.length;
+    blocks.splice(dropAbove?toIdx:toIdx+1,0,movedBlock);
+    steps=blocks.flat();
+  } else {
+    const fromIdx=steps.findIndex(s=>s.id===dragStepId);
+    let toIdx=steps.findIndex(s=>s.id===targetId);
+    if(fromIdx<0||toIdx<0) return;
+    const [moved]=steps.splice(fromIdx,1);
+    toIdx=steps.findIndex(s=>s.id===targetId);
+    if(toIdx<0) toIdx=steps.length;
+    steps.splice(dropAbove?toIdx:toIdx+1,0,moved);
+  }
+
   renderSteps();markDirty();
 }
 function upStep(id,f,v){
@@ -1799,22 +1968,52 @@ function refreshBranchDropdowns(){
   });
 }
 /* Tags */
+function updateStepTagsDOM(stepId){
+  const s=steps.find(x=>x.id===stepId);if(!s)return;
+  const card=document.getElementById("sc-"+stepId);
+  if(!card){renderSteps();return;}
+  const tagsWrap=card.querySelector(".step-tags");
+  if(!tagsWrap){renderSteps();return;}
+  const tagChips=s.tags.map(t=>`<span class="tag-chip">${esc(t)}<button class="tag-chip-rm" onclick="removeTag(${s.id},'${esc(t)}')">×</button></span>`).join("");
+  tagsWrap.innerHTML=`${tagChips}<input class="tag-input" placeholder="+ add tag…" onkeydown="if(event.key==='Enter'||event.key===','||event.key===' '){addTag(${s.id},this.value);this.value='';event.preventDefault();}">`;
+  const inp=tagsWrap.querySelector(".tag-input");
+  if(inp) inp.focus();
+}
 function addTag(stepId,val){
   const s=steps.find(x=>x.id===stepId);if(!s)return;
-  const tag=(val||'').trim().toLowerCase();
-  if(tag&&!s.tags.includes(tag)){s.tags.push(tag);renderSteps();renderTagFilter();markDirty();}
+  const tag=(val||"").trim().toLowerCase();
+  if(tag&&!s.tags.includes(tag)){s.tags.push(tag);updateStepTagsDOM(stepId);renderTagFilter();markDirty();}
 }
 function removeTag(stepId,tag){
   const s=steps.find(x=>x.id===stepId);if(!s)return;
-  s.tags=s.tags.filter(t=>t!==tag);renderSteps();renderTagFilter();markDirty();
+  s.tags=s.tags.filter(t=>t!==tag);updateStepTagsDOM(stepId);renderTagFilter();markDirty();
 }
 /* Step risks */
+function updateStepRisksDOM(stepId){
+  const s=steps.find(x=>x.id===stepId);if(!s)return;
+  const wrap=document.getElementById("sr-wrap-"+stepId);
+  if(!wrap){renderSteps();return;}
+  const srHtml=s.stepRisks.map((r,ri)=>`<div class="step-risk-row">
+    <input type="text" placeholder="Risk…" value="${esc(r.risk)}" oninput="upStepRisk(${s.id},${ri},'risk',this.value)" style="flex:2;">
+    <select onchange="upStepRisk(${s.id},${ri},'sev',this.value)">
+      <option value="H"${r.sev==='H'?' selected':''}>High</option>
+      <option value="M"${r.sev==='M'?' selected':''}>Med</option>
+      <option value="L"${r.sev==='L'?' selected':''}>Low</option>
+    </select>
+    <input type="text" placeholder="Mitigation…" value="${esc(r.mit)}" oninput="upStepRisk(${s.id},${ri},'mit',this.value)" style="flex:2;">
+    <button class="rm-x" onclick="removeStepRisk(${s.id},${ri})">×</button>
+  </div>`).join("");
+  wrap.innerHTML=`<div class="step-risk-hdr">
+    <span class="step-risk-title">Step risks${s.stepRisks.length?' ('+s.stepRisks.length+')':''}</span>
+    <button class="step-risk-add" onclick="addStepRisk(${s.id})">+ add</button>
+  </div>${srHtml}`;
+}
 function addStepRisk(stepId){
   const s=steps.find(x=>x.id===stepId);if(!s)return;
-  s.stepRisks.push({risk:'',sev:'M',mit:''});renderSteps();markDirty();
+  s.stepRisks.push({risk:'',sev:'M',mit:''});updateStepRisksDOM(stepId);markDirty();
   setTimeout(()=>{const els=document.querySelectorAll(`#sr-wrap-${stepId} .step-risk-row input`);if(els.length)els[els.length-1].focus();},40);
 }
-function removeStepRisk(stepId,idx){const s=steps.find(x=>x.id===stepId);if(!s)return;s.stepRisks.splice(idx,1);renderSteps();markDirty();}
+function removeStepRisk(stepId,idx){const s=steps.find(x=>x.id===stepId);if(!s)return;s.stepRisks.splice(idx,1);updateStepRisksDOM(stepId);markDirty();}
 function upStepRisk(stepId,idx,f,v){const s=steps.find(x=>x.id===stepId);if(s&&s.stepRisks[idx])s.stepRisks[idx][f]=v;markDirty();}
 
 /* Tag filter */
@@ -1887,12 +2086,12 @@ function renderStepCard(s,idx,isNested){
   </div>`).join('');
 
   const expandOnClick=isCompact?`onclick="expandStepCard(${s.id})" style="cursor:pointer;"`:'';
-  const dragAttrs=isCompact?`draggable="true" ondragstart="onStepDragStart(event,${s.id})" ondragend="onStepDragEnd(event)" ondragover="onStepDragOver(event)" ondragleave="onStepDragLeave(event)" ondrop="onStepDrop(event,${s.id})"`:'';
-  const dragHandle=isCompact?'<div class="drag-handle" onmousedown="event.stopPropagation()" title="Drag to reorder">⠿</div>':'';
+  const dragAttrs=`draggable="true" ondragstart="onStepDragStart(event,${s.id})" ondragend="onStepDragEnd(event)" ondragover="onStepDragOver(event)" ondragleave="onStepDragLeave(event)" ondrop="onStepDrop(event,${s.id})"`;
+  const dragHandle=`<div class="drag-handle" onmousedown="event.stopPropagation()" title="Drag to reorder">⠿</div>`;
   const stepStyle=`--step-color:${tc.nb};`;
   return `<div class="step-card${heatClass}${nestedClass}${compactClass}" id="sc-${s.id}" data-step-id="${s.id}" style="${stepStyle}" ${dragAttrs}${expandOnClick}>
     ${dragHandle}
-    <div class="step-num" style="background:${tc.nb};color:${tc.nf};">${currentFlowBadgeMap.get(s.id)||(idx+1)}</div>
+    <div class="step-num" style="background:${tc.nb};color:${tc.nf};">${idx+1}</div>
     <div class="step-body">
       <div class="step-row1">
         <span class="type-tag ${tc.cls}">${TL[s.type]}</span>
@@ -2036,14 +2235,20 @@ function renderDescField(s){
 
 /* Render steps in linear mode (original) - for simple processes */
 function renderStepsLinear(visible,tree,inlinedIds){
-  visible.forEach((s,idx)=>{
-    if(inlinedIds.has(String(s.id)))return;
+  const topVisible = visible.filter(x => !inlinedIds.has(String(x.id)));
+  if(topVisible.length > 0){
+    const topDivWrap = document.createElement("div");
+    topDivWrap.innerHTML = renderInsertDivider(0);
+    tree.appendChild(topDivWrap.firstElementChild);
+  }
+
+  topVisible.forEach((s,idx)=>{
     const realIdx=steps.indexOf(s);
-    const wrap=document.createElement('div');wrap.className='step-branch-wrap';
+    const wrap=document.createElement("div");wrap.className="step-branch-wrap";
     wrap.innerHTML=renderStepCard(s,realIdx);
 
     // If decision with branches, render tabbed interface so users can add steps inline
-    if(s.type==='decision'&&s.branches&&s.branches.length>0){
+    if(s.type==="decision"&&s.branches&&s.branches.length>0){
       const branchContainer=createBranchContainer(s,realIdx);
       if(branchContainer){
         wrap.appendChild(branchContainer);
@@ -2053,10 +2258,13 @@ function renderStepsLinear(visible,tree,inlinedIds){
     tree.appendChild(wrap);
     
     // Sequential connector
-    const nextVisible=visible.slice(idx+1).find(x=>!inlinedIds.has(String(x.id)));
+    const nextVisible=topVisible[idx+1];
     if(nextVisible){
-      const c=document.createElement('div');c.className='step-seq-conn';c.innerHTML='<span>↓</span>';tree.appendChild(c);
+      const c=document.createElement("div");c.className="step-seq-conn";c.innerHTML="<span>↓</span>";tree.appendChild(c);
     }
+    const divWrap=document.createElement("div");
+    divWrap.innerHTML=renderInsertDivider(s.id);
+    tree.appendChild(divWrap.firstElementChild);
   });
 }
 
@@ -2285,16 +2493,20 @@ function createBranchContainer(s,realIdx){
 
 /* Render tabbed branch interface - for complex processes */
 function renderStepsWithBranches(visible,tree,inlinedIds){
-  visible.forEach((s,idx)=>{
-    // Skip steps that are rendered inline under a decision above them
-    if(inlinedIds.has(String(s.id))) return;
+  const topVisible = visible.filter(x => !inlinedIds.has(String(x.id)));
+  if(topVisible.length > 0){
+    const topDivWrap = document.createElement("div");
+    topDivWrap.innerHTML = renderInsertDivider(0);
+    tree.appendChild(topDivWrap.firstElementChild);
+  }
 
+  topVisible.forEach((s,idx)=>{
     const realIdx=steps.indexOf(s);
-    const wrap=document.createElement('div');wrap.className='step-branch-wrap';
+    const wrap=document.createElement("div");wrap.className="step-branch-wrap";
     wrap.innerHTML=renderStepCard(s,realIdx);
 
     // If decision with branches, render tabbed interface
-    if(s.type==='decision'&&s.branches&&s.branches.length>0){
+    if(s.type==="decision"&&s.branches&&s.branches.length>0){
       const branchContainer=createBranchContainer(s,realIdx);
       if(branchContainer){
         wrap.appendChild(branchContainer);
@@ -2304,63 +2516,60 @@ function renderStepsWithBranches(visible,tree,inlinedIds){
     tree.appendChild(wrap);
 
     // Sequential connector between top-level (non-inlined) steps
-    const nextVisible=visible.slice(idx+1).find(x=>!inlinedIds.has(String(x.id)));
+    const nextVisible=topVisible[idx+1];
     if(nextVisible){
-      const c=document.createElement('div');c.className='step-seq-conn';c.innerHTML='<span>↓</span>';tree.appendChild(c);
+      const c=document.createElement("div");c.className="step-seq-conn";c.innerHTML="<span>↓</span>";tree.appendChild(c);
     }
+    const divWrap=document.createElement("div");
+    divWrap.innerHTML=renderInsertDivider(s.id);
+    tree.appendChild(divWrap.firstElementChild);
   });
 }
 
 function renderSteps(){
-  const tree=document.getElementById('steps-tree');tree.innerHTML='';
-  tree.classList.toggle('compact-mode', viewMode==='compact' || steps.length>=15);
+  const tree=document.getElementById("steps-tree");
+  if(!tree) return;
+
+  const prevScrollTop=window.scrollY;
+  const treeScrollTop=tree.scrollTop;
+  const activeElId=document.activeElement?document.activeElement.id:null;
+  const activeSelStart=(document.activeElement&&"selectionStart" in document.activeElement)?document.activeElement.selectionStart:null;
+  const activeSelEnd=(document.activeElement&&"selectionEnd" in document.activeElement)?document.activeElement.selectionEnd:null;
+
+  tree.innerHTML="";
+  tree.classList.toggle("compact-mode", viewMode==="compact" || steps.length>=15);
   // Compute flow-order badge numbers once per render
   currentFlowBadgeMap=new Map();
   getFlowOrderedSteps().forEach((s,i)=>currentFlowBadgeMap.set(s.id,i+1));
-  // Document tab shows steps in raw array order so drag-and-drop / arrow
-  // buttons visibly reorder cards. RACI/Timeline/Gantt use flow order.
   const visible=activeTagFilter?steps.filter(s=>s.tags&&s.tags.includes(activeTagFilter)):steps;
 
-  // Build a set of step IDs shown inline under their parent decision.
-  // A step is inlined only if it is EXCLUSIVE to a single branch path —
-  // convergence points (reachable from multiple branches) stay at top level.
-  const inlinedIds=new Set();
-  steps.forEach(s=>{
-    if(s.type==='decision'&&s.branches){
-      // Collect full explicit paths for each branch
-      const branchPaths=s.branches.map(b=>{
-        if(!b.targetId) return [];
-        return collectBranchPath(String(b.targetId),new Set([String(s.id)]));
-      });
-      // Count how many branch paths each step appears in
-      const pathCounts={};
-      branchPaths.forEach(path=>{
-        path.forEach(id=>{pathCounts[id]=(pathCounts[id]||0)+1;});
-      });
-      // Only inline steps exclusive to a single branch
-      branchPaths.forEach(path=>{
-        path.forEach(id=>{
-          if(pathCounts[id]===1) inlinedIds.add(id);
-        });
-      });
-    }
-  });
+  const inlinedIds=getInlinedStepIds();
   
   // Choose render mode based on process complexity
   if(hasBranching()&&steps.length>3){
-    // Use visual branch lanes for complex processes
     renderStepsWithBranches(visible,tree,inlinedIds);
   } else {
-    // Use linear mode for simple processes
     renderStepsLinear(visible,tree,inlinedIds);
   }
 
   initStepImages();
   updMetrics();
-  if(document.getElementById('tab-flow').style.display!=='none') renderInteractiveCanvas();
-  if(document.getElementById('tab-owner').style.display!=='none') renderOwnerView();
-  if(document.getElementById('tab-raci').style.display!=='none') renderRaciTimeline();
+  if(document.getElementById("tab-flow").style.display!=="none") renderInteractiveCanvas();
+  if(document.getElementById("tab-owner").style.display!=="none") renderOwnerView();
+  if(document.getElementById("tab-raci").style.display!=="none") renderRaciTimeline();
 
+  if(treeScrollTop) tree.scrollTop=treeScrollTop;
+  if(prevScrollTop) window.scrollTo(window.scrollX,prevScrollTop);
+
+  if(activeElId){
+    const el=document.getElementById(activeElId);
+    if(el){
+      el.focus();
+      if(activeSelStart!==null&&"setSelectionRange" in el){
+        try{el.setSelectionRange(activeSelStart,activeSelEnd);}catch(e){}
+      }
+    }
+  }
 }
 
 
